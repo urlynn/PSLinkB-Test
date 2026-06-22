@@ -13,20 +13,15 @@ jobs:
           curl -sL https://downloads.openwrt.org/releases/24.10.4/targets/x86/64/openwrt-24.10.4-x86-64-generic-rootfs.tar.gz -o /tmp/rootfs.tar.gz
           mkdir -p /tmp/openwrt
           sudo tar xzf /tmp/rootfs.tar.gz -C /tmp/openwrt
-          sudo mount -t proc none /tmp/openwrt/proc
 
-      - name: Download ipk
+      - name: Download and install via opkg
         run: |
           URL=$(curl -s https://api.github.com/repos/${{ github.repository }}/releases/latest \
             | jq -r '.assets[] | select(.name | test("x86_64.*ipk")) | .browser_download_url' | head -1)
           curl -sL "$URL" -o /tmp/openwrt/tmp/pslinkb.ipk
+          sudo chroot /tmp/openwrt opkg install /tmp/pslinkb.ipk --force-depends
 
-      - name: Install via opkg
-        run: |
-          sudo chroot /tmp/openwrt opkg update
-          sudo chroot /tmp/openwrt opkg install /tmp/pslinkb.ipk --force-overwrite
-
-      - name: Verify
+      - name: Verify --version
         run: sudo chroot /tmp/openwrt pslinkb --version
 
   verify-aarch64:
@@ -37,18 +32,13 @@ jobs:
           curl -sL https://downloads.openwrt.org/releases/24.10.4/targets/armsr/armv8/openwrt-24.10.4-armsr-armv8-rootfs.tar.gz -o /tmp/rootfs.tar.gz
           mkdir -p /tmp/openwrt
           sudo tar xzf /tmp/rootfs.tar.gz -C /tmp/openwrt
-          sudo mount -t proc none /tmp/openwrt/proc
 
-      - name: Download ipk
+      - name: Download and install via opkg
         run: |
           URL=$(curl -s https://api.github.com/repos/${{ github.repository }}/releases/latest \
             | jq -r '.assets[] | select(.name | test("aarch64.*ipk")) | .browser_download_url' | head -1)
           curl -sL "$URL" -o /tmp/openwrt/tmp/pslinkb.ipk
+          sudo chroot /tmp/openwrt opkg install /tmp/pslinkb.ipk --force-depends
 
-      - name: Install via opkg
-        run: |
-          sudo chroot /tmp/openwrt opkg update
-          sudo chroot /tmp/openwrt opkg install /tmp/pslinkb.ipk --force-overwrite
-
-      - name: Verify
+      - name: Verify --version
         run: sudo chroot /tmp/openwrt pslinkb --version
