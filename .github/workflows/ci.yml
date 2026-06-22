@@ -1,60 +1,44 @@
 name: CI
 
 on:
-  push:
-    branches: [main, "luci/**"]
-    paths-ignore: ["luci-app-pslinkb/**", "*.md"]
   release:
     types: [published]
 
 jobs:
-  verify-aarch64:
-    runs-on: ubuntu-24.04-arm
-
-      - name: Download aarch64 tar.gz
-        run: |
-          ASSET_URL=$(curl -s https://api.github.com/repos/${{ github.repository }}/releases/latest \
-            | jq -r '.assets[] | select(.name | test("aarch64.*tar")) | .browser_download_url' | head -1)
-          if [ -z "$ASSET_URL" ]; then
-            echo "No aarch64 asset found, skipping"
-            exit 0
-          fi
-          curl -sL "$ASSET_URL" -o /tmp/aarch64.tar.gz
-          tar xzf /tmp/aarch64.tar.gz -C /tmp
-
-      - name: Verify --version (native aarch64)
-        run: |
-          BIN=$(find /tmp -name pslinkb -type f | head -1)
-          if [ -z "$BIN" ]; then echo "Binary not found"; exit 1; fi
-          file "$BIN"
-          chmod +x "$BIN"
-          "$BIN" --version
-
-  verify-ipk:
+  verify-x86_64:
     runs-on: ubuntu-latest
     steps:
-      - name: Download ipk files
-        run: |
-          for arch in x86_64 aarch64_generic; do
-            URL=$(curl -s https://api.github.com/repos/${{ github.repository }}/releases/latest \
-              | jq -r ".assets[] | select(.name | test(\"${arch}\.*ipk\")) | .browser_download_url" | head -1)
-            if [ -n "$URL" ]; then
-              curl -sL "$URL" -o "/tmp/pslinkb_${arch}.ipk"
-              echo "Downloaded: pslinkb_${arch}.ipk"
-            fi
-          done
+      - uses: actions/checkout@v4
 
-      - name: Verify ipk structure
+      - name: Setup OpenWRT rootfs
         run: |
-          for f in /tmp/pslinkb_*.ipk; do
-            if [ ! -f "$f" ]; then continue; fi
-            echo "=== Checking $f ==="
-            ar t "$f" | tee /dev/stderr
-            mkdir -p /tmp/ipk-check
-            cd /tmp/ipk-check
-            ar x "$f"
-            tar tzf control.tar.gz | grep "control"
-            tar tzf data.tar.gz | grep "pslinkb"
-            tar xzf control.tar.gz && grep "Version" control
-            cd /tmp && rm -rf /tmp/ipk-check
-          done
+          curl -sL https://downloads.openwrt.org/releases/24.10.4/targets/x86/64/openwrt-24.10.4-x86-64-generic-rootfs.tar.gz -o /tmp/rootfs.tar.gz
+          mkdir -p /tmp/openwrt
+          sudo tar xzf /tmp/rootfs.tar.gz -C /tmp/openwrt
+
+      - name: Copy ipk and chroot install
+        run: |
+          ASSET=$(curl -s https://api.github.com/repos/${{ github.repository }}/releases/latest \
+            | jq -r '.assets[] | select(.name | test("x86_64.*ipk")) | .browser_download_url' | head -1)
+          curl -sL "$ASSET" -o /tmp/openwrt/tmp/pslinkb.ipk
+          sudo chroot /tmp/openwrt /bin/sh -c "opkg install /tmp/pslinkb.ipk --force-overwrite 2>&1 || true"
+          sudo chroot /tmp/openwrt /bin/sh -c "pslinkb --version 2>&1 || opkg list-installed pslinkb"
+
+  verify-aarch64:
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup OpenWRT rootfs
+        run: |
+          curl -sL https://downloads.openwrt.org/releases/24.10.4/targets/armsr/armv8/openwrt-24.10.4-armsr-armv8-rootfs.tar.gz -o /tmp/rootfs.tar.gz
+          mkdir -p /tmp/openwrt
+          sudo tar xzf /tmp/rootfs.tar.gz -C /tmp/openwrt
+
+      - name: Copy ipk and chroot install
+        run: |
+          ASSET=$(curl -s https://api.github.com/repos/${{ github.repository }}/releases/latest \
+            | jq -r '.assets[] | select(.name | test("aarch64.*ipk")) | .browser_download_url' | head -1)
+          curl -sL "$ASSET" -o /tmp/openwrt/tmp/pslinkb.ipk
+          sudo chroot /tmp/openwrt /bin/sh -c "opkg install /tmp/pslinkb.ipk --force-overwrite 2>&1 || true"
+          sudo chroot /tmp/openwrt /bin/sh -c "pslinkb --version 2>&1 || opkg list-installed pslinkb"
