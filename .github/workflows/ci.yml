@@ -8,37 +8,31 @@ jobs:
   verify-x86_64:
     runs-on: ubuntu-latest
     steps:
-      - name: Setup OpenWRT rootfs
+      - name: Setup OpenWRT + opkg + verify
         run: |
-          curl -sL https://downloads.openwrt.org/releases/24.10.4/targets/x86/64/openwrt-24.10.4-x86-64-generic-rootfs.tar.gz -o /tmp/rootfs.tar.gz
-          mkdir -p /tmp/openwrt
-          sudo tar xzf /tmp/rootfs.tar.gz -C /tmp/openwrt
-
-      - name: Download and install via opkg
-        run: |
+          curl -sL https://downloads.openwrt.org/releases/24.10.4/targets/x86/64/openwrt-24.10.4-x86-64-rootfs.tar.gz -o /tmp/rootfs.tar.gz
+          mkdir -p /tmp/owrt
+          sudo tar xzf /tmp/rootfs.tar.gz -C /tmp/owrt --exclude='dev/*'
+          mkdir -p /tmp/owrt/tmp /tmp/owrt/dev
           URL=$(curl -s https://api.github.com/repos/${{ github.repository }}/releases/latest \
             | jq -r '.assets[] | select(.name | test("x86_64.*ipk")) | .browser_download_url' | head -1)
-          curl -sL "$URL" -o /tmp/openwrt/tmp/pslinkb.ipk
-          sudo chroot /tmp/openwrt opkg install /tmp/pslinkb.ipk --force-depends
-
-      - name: Verify --version
-        run: sudo chroot /tmp/openwrt pslinkb --version
+          [ -z "$URL" ] && echo "No ipk asset" && exit 1
+          curl -sL "$URL" -o /tmp/owrt/tmp/pslinkb.ipk
+          sudo chroot /tmp/owrt /bin/opkg install /tmp/pslinkb.ipk --force-overwrite
+          sudo chroot /tmp/owrt /usr/bin/pslinkb --version
 
   verify-aarch64:
     runs-on: ubuntu-24.04-arm
     steps:
-      - name: Setup OpenWRT rootfs
+      - name: Setup OpenWRT + opkg + verify
         run: |
           curl -sL https://downloads.openwrt.org/releases/24.10.4/targets/armsr/armv8/openwrt-24.10.4-armsr-armv8-rootfs.tar.gz -o /tmp/rootfs.tar.gz
-          mkdir -p /tmp/openwrt
-          sudo tar xzf /tmp/rootfs.tar.gz -C /tmp/openwrt
-
-      - name: Download and install via opkg
-        run: |
+          mkdir -p /tmp/owrt
+          sudo tar xzf /tmp/rootfs.tar.gz -C /tmp/owrt --exclude='dev/*'
+          mkdir -p /tmp/owrt/tmp /tmp/owrt/dev
           URL=$(curl -s https://api.github.com/repos/${{ github.repository }}/releases/latest \
             | jq -r '.assets[] | select(.name | test("aarch64.*ipk")) | .browser_download_url' | head -1)
-          curl -sL "$URL" -o /tmp/openwrt/tmp/pslinkb.ipk
-          sudo chroot /tmp/openwrt opkg install /tmp/pslinkb.ipk --force-depends
-
-      - name: Verify --version
-        run: sudo chroot /tmp/openwrt pslinkb --version
+          [ -z "$URL" ] && echo "No ipk asset" && exit 1
+          curl -sL "$URL" -o /tmp/owrt/tmp/pslinkb.ipk
+          sudo chroot /tmp/owrt /bin/opkg install /tmp/pslinkb.ipk --force-overwrite
+          sudo chroot /tmp/owrt /usr/bin/pslinkb --version
