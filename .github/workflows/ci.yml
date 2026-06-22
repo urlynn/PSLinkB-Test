@@ -30,6 +30,9 @@ jobs:
           curl -sL "$ASSET" -o /tmp/pkg.tar.gz
           mkdir -p /tmp/pkg-root/usr/bin /tmp/pkg-root/CONTROL
           tar xzf /tmp/pkg.tar.gz -C /tmp/pkg-root --strip-components=1
+          mv /tmp/pkg-root/pslinkb /tmp/pkg-root/pslinkb-tmp
+          mkdir -p /tmp/pkg-root/usr/bin
+          mv /tmp/pkg-root/pslinkb-tmp /tmp/pkg-root/usr/bin/pslinkb
           echo "Package: pslinkb" > /tmp/pkg-root/CONTROL/control
           echo "Version: 0.3.3-r0" >> /tmp/pkg-root/CONTROL/control
           echo "Architecture: ${{ matrix.target.arch_ctl }}" >> /tmp/pkg-root/CONTROL/control
