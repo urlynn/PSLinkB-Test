@@ -1,8 +1,6 @@
 name: CI
 
 on:
-  push:
-    branches: [main]
   release:
     types: [published]
 
@@ -13,24 +11,33 @@ jobs:
         target:
           - arch: x86_64
             rootfs: https://downloads.openwrt.org/releases/24.10.4/targets/x86/64/openwrt-24.10.4-x86-64-rootfs.tar.gz
-            ver:   pslinkb --version
-            shell: /bin/sh
+            arch_ctl: x86_64
           - arch: aarch64
             rootfs: https://downloads.openwrt.org/releases/24.10.4/targets/armsr/armv8/openwrt-24.10.4-armsr-armv8-rootfs.tar.gz
-            ver:   pslinkb --version
-            shell: /bin/sh
+            arch_ctl: aarch64_generic
     runs-on: ${{ startsWith(matrix.target.arch, 'aarch') && 'ubuntu-24.04-arm' || 'ubuntu-latest' }}
     steps:
       - run: |
           curl -sL "${{ matrix.target.rootfs }}" -o /tmp/rootfs.tar.gz
           mkdir -p /tmp/owrt && sudo tar xzf /tmp/rootfs.tar.gz -C /tmp/owrt --exclude='dev/*'
           mkdir -p /tmp/owrt/tmp /tmp/owrt/dev /tmp/owrt/var/lock
+          # Download tar.gz, repack as ipk locally
           ASSET=$(curl -s https://api.github.com/repos/${{ github.repository }}/releases/latest \
-            | jq -r ".assets[] | select(.name | test(\"${{ matrix.target.arch }}.*ipk\")) | .browser_download_url" | head -1)
-          [ -z "$ASSET" ] && { echo "No ${{ matrix.target.arch }} ipk"; exit 1; }
-          curl -sL "$ASSET" -o /tmp/owrt/tmp/pslinkb.ipk
+            | jq -r ".assets[] | select(.name | test(\"${{ matrix.target.arch }}.*openwrt.*tar\")) | .browser_download_url" | head -1)
+          [ -z "$ASSET" ] && { echo "No asset"; exit 1; }
+          curl -sL "$ASSET" -o /tmp/pkg.tar.gz
+          mkdir -p /tmp/pkg-root/usr/bin /tmp/pkg-root/CONTROL
+          tar xzf /tmp/pkg.tar.gz -C /tmp/pkg-root --strip-components=1
+          echo "Package: pslinkb" > /tmp/pkg-root/CONTROL/control
+          echo "Version: 0.3.3-r0" >> /tmp/pkg-root/CONTROL/control
+          echo "Architecture: ${{ matrix.target.arch_ctl }}" >> /tmp/pkg-root/CONTROL/control
+          echo "Depends: libc,libpthread" >> /tmp/pkg-root/CONTROL/control
+          cd /tmp/pkg-root && tar czf /tmp/control.tar.gz -C CONTROL . && tar czf /tmp/data.tar.gz usr
+          echo "2.0" > /tmp/debian-binary
+          cd /tmp && tar czf /tmp/pslinkb.ipk control.tar.gz data.tar.gz debian-binary
+          cp /tmp/pslinkb.ipk /tmp/owrt/tmp/
           sudo chroot /tmp/owrt /bin/opkg install /tmp/pslinkb.ipk --force-overwrite
-          sudo chroot /tmp/owrt ${{ matrix.target.ver }}
+          sudo chroot /tmp/owrt /usr/bin/pslinkb --version
 
   verify-apk:
     strategy:
@@ -45,10 +52,10 @@ jobs:
       - run: |
           curl -sL "${{ matrix.target.rootfs }}" -o /tmp/rootfs.tar.gz
           mkdir -p /tmp/owrt && sudo tar xzf /tmp/rootfs.tar.gz -C /tmp/owrt --exclude='dev/*'
-          mkdir -p /tmp/owrt/tmp /tmp/owrt/dev /tmp/owrt/var/lock
+          mkdir -p /tmp/owrt/tmp /tmp/owrt/dev
           ASSET=$(curl -s https://api.github.com/repos/${{ github.repository }}/releases/latest \
             | jq -r ".assets[] | select(.name | test(\"${{ matrix.target.arch }}.*apk\")) | .browser_download_url" | head -1)
-          [ -z "$ASSET" ] && { echo "No ${{ matrix.target.arch }} apk (skip)"; exit 0; }
+          [ -z "$ASSET" ] && { echo "No apk, skip"; exit 0; }
           curl -sL "$ASSET" -o /tmp/owrt/tmp/pslinkb.apk
           sudo chroot /tmp/owrt /usr/bin/apk add --allow-untrusted /tmp/pslinkb.apk
           sudo chroot /tmp/owrt /usr/bin/pslinkb --version
