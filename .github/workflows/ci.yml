@@ -5,34 +5,48 @@ on:
     types: [published]
 
 jobs:
-  verify-x86_64:
-    runs-on: ubuntu-latest
+  verify-opkg:
+    strategy:
+      matrix:
+        target:
+          - arch: x86_64
+            rootfs: https://downloads.openwrt.org/releases/24.10.4/targets/x86/64/openwrt-24.10.4-x86-64-rootfs.tar.gz
+            ver:   pslinkb --version
+            shell: /bin/sh
+          - arch: aarch64
+            rootfs: https://downloads.openwrt.org/releases/24.10.4/targets/armsr/armv8/openwrt-24.10.4-armsr-armv8-rootfs.tar.gz
+            ver:   pslinkb --version
+            shell: /bin/sh
+    runs-on: ${{ startsWith(matrix.target.arch, 'aarch') && 'ubuntu-24.04-arm' || 'ubuntu-latest' }}
     steps:
-      - name: Setup OpenWRT + opkg + verify
-        run: |
-          curl -sL https://downloads.openwrt.org/releases/24.10.4/targets/x86/64/openwrt-24.10.4-x86-64-rootfs.tar.gz -o /tmp/rootfs.tar.gz
-          mkdir -p /tmp/owrt
-          sudo tar xzf /tmp/rootfs.tar.gz -C /tmp/owrt --exclude='dev/*'
+      - run: |
+          curl -sL "${{ matrix.target.rootfs }}" -o /tmp/rootfs.tar.gz
+          mkdir -p /tmp/owrt && sudo tar xzf /tmp/rootfs.tar.gz -C /tmp/owrt --exclude='dev/*'
           mkdir -p /tmp/owrt/tmp /tmp/owrt/dev
-          URL=$(curl -s https://api.github.com/repos/${{ github.repository }}/releases/latest \
-            | jq -r '.assets[] | select(.name | test("x86_64.*ipk")) | .browser_download_url' | head -1)
-          [ -z "$URL" ] && echo "No ipk asset" && exit 1
-          curl -sL "$URL" -o /tmp/owrt/tmp/pslinkb.ipk
+          ASSET=$(curl -s https://api.github.com/repos/${{ github.repository }}/releases/latest \
+            | jq -r ".assets[] | select(.name | test(\"${{ matrix.target.arch }}.*ipk\")) | .browser_download_url" | head -1)
+          [ -z "$ASSET" ] && { echo "No ${{ matrix.target.arch }} ipk"; exit 1; }
+          curl -sL "$ASSET" -o /tmp/owrt/tmp/pslinkb.ipk
           sudo chroot /tmp/owrt /bin/opkg install /tmp/pslinkb.ipk --force-overwrite
-          sudo chroot /tmp/owrt /usr/bin/pslinkb --version
+          sudo chroot /tmp/owrt ${{ matrix.target.ver }}
 
-  verify-aarch64:
-    runs-on: ubuntu-24.04-arm
+  verify-apk:
+    strategy:
+      matrix:
+        target:
+          - arch: x86_64
+            rootfs: https://downloads.openwrt.org/snapshots/targets/x86/64/openwrt-x86-64-rootfs.tar.gz
+          - arch: aarch64
+            rootfs: https://downloads.openwrt.org/snapshots/targets/armsr/armv8/openwrt-armsr-armv8-rootfs.tar.gz
+    runs-on: ${{ startsWith(matrix.target.arch, 'aarch') && 'ubuntu-24.04-arm' || 'ubuntu-latest' }}
     steps:
-      - name: Setup OpenWRT + opkg + verify
-        run: |
-          curl -sL https://downloads.openwrt.org/releases/24.10.4/targets/armsr/armv8/openwrt-24.10.4-armsr-armv8-rootfs.tar.gz -o /tmp/rootfs.tar.gz
-          mkdir -p /tmp/owrt
-          sudo tar xzf /tmp/rootfs.tar.gz -C /tmp/owrt --exclude='dev/*'
+      - run: |
+          curl -sL "${{ matrix.target.rootfs }}" -o /tmp/rootfs.tar.gz
+          mkdir -p /tmp/owrt && sudo tar xzf /tmp/rootfs.tar.gz -C /tmp/owrt --exclude='dev/*'
           mkdir -p /tmp/owrt/tmp /tmp/owrt/dev
-          URL=$(curl -s https://api.github.com/repos/${{ github.repository }}/releases/latest \
-            | jq -r '.assets[] | select(.name | test("aarch64.*ipk")) | .browser_download_url' | head -1)
-          [ -z "$URL" ] && echo "No ipk asset" && exit 1
-          curl -sL "$URL" -o /tmp/owrt/tmp/pslinkb.ipk
-          sudo chroot /tmp/owrt /bin/opkg install /tmp/pslinkb.ipk --force-overwrite
+          ASSET=$(curl -s https://api.github.com/repos/${{ github.repository }}/releases/latest \
+            | jq -r ".assets[] | select(.name | test(\"${{ matrix.target.arch }}.*apk\")) | .browser_download_url" | head -1)
+          [ -z "$ASSET" ] && { echo "No ${{ matrix.target.arch }} apk (skip)"; exit 0; }
+          curl -sL "$ASSET" -o /tmp/owrt/tmp/pslinkb.apk
+          sudo chroot /tmp/owrt /usr/bin/apk add --allow-untrusted /tmp/pslinkb.apk
           sudo chroot /tmp/owrt /usr/bin/pslinkb --version
