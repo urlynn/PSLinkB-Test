@@ -24,7 +24,7 @@ jobs:
       - run: |
           curl -sL "${{ matrix.target.rootfs }}" -o /tmp/rootfs.tar.gz
           mkdir -p /tmp/owrt && sudo tar xzf /tmp/rootfs.tar.gz -C /tmp/owrt --exclude='dev/*'
-          mkdir -p /tmp/owrt/tmp /tmp/owrt/dev
+          mkdir -p /tmp/owrt/tmp /tmp/owrt/dev /tmp/owrt/var/lock
           ASSET=$(curl -s https://api.github.com/repos/${{ github.repository }}/releases/latest \
             | jq -r ".assets[] | select(.name | test(\"${{ matrix.target.arch }}.*ipk\")) | .browser_download_url" | head -1)
           [ -z "$ASSET" ] && { echo "No ${{ matrix.target.arch }} ipk"; exit 1; }
@@ -45,7 +45,7 @@ jobs:
       - run: |
           curl -sL "${{ matrix.target.rootfs }}" -o /tmp/rootfs.tar.gz
           mkdir -p /tmp/owrt && sudo tar xzf /tmp/rootfs.tar.gz -C /tmp/owrt --exclude='dev/*'
-          mkdir -p /tmp/owrt/tmp /tmp/owrt/dev
+          mkdir -p /tmp/owrt/tmp /tmp/owrt/dev /tmp/owrt/var/lock
           ASSET=$(curl -s https://api.github.com/repos/${{ github.repository }}/releases/latest \
             | jq -r ".assets[] | select(.name | test(\"${{ matrix.target.arch }}.*apk\")) | .browser_download_url" | head -1)
           [ -z "$ASSET" ] && { echo "No ${{ matrix.target.arch }} apk (skip)"; exit 0; }
