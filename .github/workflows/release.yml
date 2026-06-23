@@ -132,7 +132,9 @@ jobs:
     runs-on: ubuntu-24.04-arm
     steps:
       - uses: actions/download-artifact@v4
-        with: { name: packages, path: /tmp/pkg }
+        with:
+          name: packages
+          path: /tmp/pkg
       - run: |
           curl -sL https://downloads.openwrt.org/releases/24.10.4/targets/armsr/armv8/openwrt-24.10.4-armsr-armv8-rootfs.tar.gz -o /tmp/rootfs.tar.gz
           mkdir -p /tmp/owrt && sudo tar xzf /tmp/rootfs.tar.gz -C /tmp/owrt --exclude='dev/*'
@@ -146,7 +148,9 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/download-artifact@v4
-        with: { name: packages, path: /tmp/pkg }
+        with:
+          name: packages
+          path: /tmp/pkg
       - run: |
           unzip -q /tmp/pkg/pslinkb-*-windows.zip -d /tmp/win
           /tmp/win/pslinkb.exe --version
@@ -156,7 +160,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4
-        with: { name: packages, path: /tmp/pkg }
+        with:
+          name: packages
+          path: /tmp/pkg
       - name: Create Release and Upload
         run: |
           V=${{ inputs.version }}
