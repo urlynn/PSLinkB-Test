@@ -60,19 +60,21 @@ jobs:
           cp /tmp/out/pslinkb-stream-${{ matrix.arch }} /tmp/deb/usr/bin/pslinkb-stream
           DEB_ARCH=${{ matrix.arch == 'x86_64' && 'amd64' || 'arm64' }}
           VER=$(echo "${{ github.ref_name }}" | sed 's/^v//')
-          cat > /tmp/deb/DEBIAN/control <<DEBEOF
-Package: pslinkb
-Version: $VER
-Architecture: $DEB_ARCH
-Maintainer: urlynn
-Section: net
-Priority: optional
-Description: PS5 to Bilibili live streaming bridge
-DEBEOF
+          printf 'Package: pslinkb\nVersion: %s\nArchitecture: %s\nMaintainer: urlynn\nSection: net\nPriority: optional\nDescription: PS5 to Bilibili live streaming bridge\n' "$VER" "$DEB_ARCH" > /tmp/deb/DEBIAN/control
           cd /tmp/deb && tar czf /tmp/control.tar.gz -C DEBIAN . && tar czf /tmp/data.tar.gz usr
           echo "2.0" > /tmp/debian-binary && cd /tmp
           ar r /tmp/pslinkb-${{ matrix.arch }}-debian.deb debian-binary control.tar.gz data.tar.gz
           gh release upload ${{ github.ref_name }} /tmp/pslinkb-${{ matrix.arch }}-debian.deb --repo ${{ github.repository }} --clobber
+
+      - name: Package Arch Linux
+        run: |
+          mkdir -p /tmp/arch/usr/bin
+          cp /tmp/out/pslinkb-${{ matrix.arch }}-bundle /tmp/arch/usr/bin/pslinkb
+          cp /tmp/out/pslinkb-stream-${{ matrix.arch }} /tmp/arch/usr/bin/pslinkb-stream
+          VER=$(echo "${{ github.ref_name }}" | sed 's/^v//')
+          printf 'pkgname = pslinkb\npkgver = %s-1\npkgdesc = PS5 to Bilibili live streaming bridge\narch = %s\n' "$VER" "${{ matrix.arch }}" > /tmp/arch/.PKGINFO
+          cd /tmp/arch && tar --zstd -cf /tmp/pslinkb-${{ matrix.arch }}-archlinux.pkg.tar.zst .PKGINFO usr/
+          gh release upload ${{ github.ref_name }} /tmp/pslinkb-${{ matrix.arch }}-archlinux.pkg.tar.zst --repo ${{ github.repository }} --clobber
 
       - name: Package tar.gz (portable/bundle)
         run: |
