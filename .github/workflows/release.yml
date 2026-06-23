@@ -3,10 +3,6 @@ name: Package, Verify & Release
 on:
   workflow_dispatch:
     inputs:
-      run-id:
-        description: 'Build workflow run ID'
-        required: true
-        type: string
       version:
         description: 'Version (e.g. 0.3.4)'
         required: true
@@ -21,20 +17,26 @@ permissions:
   contents: write
 
 jobs:
-  # ── x86_64: 打包 → 验证 IPK/APK → 上传 ──
   package-x86_64:
     runs-on: ubuntu-latest
     env:
       V: ${{ inputs.version }}
     steps:
       - uses: actions/checkout@v4
-      - name: Download build artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: linux-x86_64
-          path: /tmp/bins
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          run-id: ${{ inputs.run-id }}
+      - name: Download linux-x86_64 artifact (latest success)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p /tmp/bins
+          for rid in $(gh run list --repo ${{ github.repository }} --workflow build.yml --limit 20 --status success --json databaseId -q '.[].databaseId'); do
+            if gh run view $rid --repo ${{ github.repository }} --json jobs -q '[.jobs[] | select(.name == "build-linux-x86_64" and .conclusion == "success")] | length' | grep -qx '[1-9]'; then
+              gh run download $rid --repo ${{ github.repository }} --name linux-x86_64 --dir /tmp/bins
+              echo "Downloaded linux-x86_64 from run $rid"
+              exit 0
+            fi
+          done
+          echo "ERROR: no successful build-linux-x86_64 found"
+          exit 1
 
       - name: Download deps (pslinkb-stream)
         run: |
@@ -43,7 +45,7 @@ jobs:
           mkdir -p /tmp/deps
           [ -f /tmp/pslinkb-build-deps.tar.gz ] && tar xzf /tmp/pslinkb-build-deps.tar.gz -C /tmp/deps || true
 
-      - name: Install OpenWRT apk tool (x86_64 native)
+      - name: Install OpenWRT apk tool
         run: |
           sudo apt-get install -y zstd
           curl -sL "https://downloads.openwrt.org/snapshots/targets/x86/64/openwrt-sdk-x86-64_gcc-14_musl.Linux-x86_64.tar.zst" -o /tmp/sdk.tar.zst
@@ -52,7 +54,6 @@ jobs:
             tar -x --to-stdout 'openwrt-sdk-*/staging_dir/host/bin/apk' -f /tmp/sdk.tar > /usr/local/bin/owrt-apk
           chmod +x /usr/local/bin/owrt-apk
           rm -f /tmp/sdk.tar.zst /tmp/sdk.tar
-          echo "APK version:" && /usr/local/bin/owrt-apk --version 2>&1 || echo "got binary"
 
       - name: Package x86_64
         run: |
@@ -68,8 +69,6 @@ jobs:
           PORT="/tmp/bins/pslinkb-${arch}-portable"
           STREAM="/tmp/deps/stream/${arch}-linux-musl/pslinkb-stream"
           [ -f "$STREAM" ] || STREAM=""
-
-          echo "--- Packaging linux-x86_64 ---"
 
           # openwrt.tar.gz
           CFG_DIR="$GITHUB_WORKSPACE/openwrt"
@@ -101,7 +100,7 @@ jobs:
           cp "$CFG_DIR/etc/init.d/pslinkb" /tmp/ipk/etc/init.d/ && chmod +x /tmp/ipk/etc/init.d/pslinkb
           printf 'Package: pslinkb\nVersion: %s-r0\nArchitecture: %s\nDepends: libc,libpthread\n' "$V" "$ARCH_IPK" > /tmp/ipk/CONTROL/control
           tar czf /tmp/control.tar.gz -C /tmp/ipk/CONTROL .
-          tar czf /tmp/data.tar.gz -C /tmp/ipk usr/
+          tar czf /tmp/data.tar.gz -C /tmp/ipk usr/ etc/
           echo "2.0" > /tmp/debian-binary
           tar czf "${OUT}/pslinkb-${V}-${arch}-openwrt.ipk" -C /tmp control.tar.gz data.tar.gz debian-binary
           rm -rf /tmp/ipk /tmp/control.tar.gz /tmp/data.tar.gz /tmp/debian-binary
@@ -168,20 +167,26 @@ jobs:
           path: /tmp/out/
           retention-days: 30
 
-  # ── aarch64: 打包 → 验证 IPK/APK → 上传 ──
   package-aarch64:
     runs-on: ubuntu-24.04-arm
     env:
       V: ${{ inputs.version }}
     steps:
       - uses: actions/checkout@v4
-      - name: Download build artifact (aarch64)
-        uses: actions/download-artifact@v4
-        with:
-          name: linux-aarch64
-          path: /tmp/bins
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          run-id: ${{ inputs.run-id }}
+      - name: Download linux-aarch64 artifact (latest success)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p /tmp/bins
+          for rid in $(gh run list --repo ${{ github.repository }} --workflow build.yml --limit 20 --status success --json databaseId -q '.[].databaseId'); do
+            if gh run view $rid --repo ${{ github.repository }} --json jobs -q '[.jobs[] | select(.name == "build-linux-aarch64" and .conclusion == "success")] | length' | grep -qx '[1-9]'; then
+              gh run download $rid --repo ${{ github.repository }} --name linux-aarch64 --dir /tmp/bins
+              echo "Downloaded linux-aarch64 from run $rid"
+              exit 0
+            fi
+          done
+          echo "ERROR: no successful build-linux-aarch64 found"
+          exit 1
 
       - name: Download deps (pslinkb-stream)
         run: |
@@ -190,7 +195,7 @@ jobs:
           mkdir -p /tmp/deps
           [ -f /tmp/pslinkb-build-deps.tar.gz ] && tar xzf /tmp/pslinkb-build-deps.tar.gz -C /tmp/deps || true
 
-      - name: Install OpenWRT apk tool (x86_64 + qemu)
+      - name: Install OpenWRT apk tool (qemu)
         run: |
           sudo apt-get install -y zstd qemu-user-static
           curl -sL "https://downloads.openwrt.org/snapshots/targets/x86/64/openwrt-sdk-x86-64_gcc-14_musl.Linux-x86_64.tar.zst" -o /tmp/sdk.tar.zst
@@ -199,7 +204,6 @@ jobs:
             tar -x --to-stdout 'openwrt-sdk-*/staging_dir/host/bin/apk' -f /tmp/sdk.tar > /usr/local/bin/owrt-apk
           chmod +x /usr/local/bin/owrt-apk
           rm -f /tmp/sdk.tar.zst /tmp/sdk.tar
-          echo "APK version:" && /usr/local/bin/owrt-apk --version 2>&1 || echo "got binary"
 
       - name: Package aarch64
         run: |
@@ -215,8 +219,6 @@ jobs:
           PORT="/tmp/bins/pslinkb-${arch}-portable"
           STREAM="/tmp/deps/stream/${arch}-linux-musl/pslinkb-stream"
           [ -f "$STREAM" ] || STREAM=""
-
-          echo "--- Packaging linux-aarch64 ---"
 
           # openwrt.tar.gz
           CFG_DIR="$GITHUB_WORKSPACE/openwrt"
@@ -248,7 +250,7 @@ jobs:
           cp "$CFG_DIR/etc/init.d/pslinkb" /tmp/ipk/etc/init.d/ && chmod +x /tmp/ipk/etc/init.d/pslinkb
           printf 'Package: pslinkb\nVersion: %s-r0\nArchitecture: %s\nDepends: libc,libpthread\n' "$V" "$ARCH_IPK" > /tmp/ipk/CONTROL/control
           tar czf /tmp/control.tar.gz -C /tmp/ipk/CONTROL .
-          tar czf /tmp/data.tar.gz -C /tmp/ipk usr/
+          tar czf /tmp/data.tar.gz -C /tmp/ipk usr/ etc/
           echo "2.0" > /tmp/debian-binary
           tar czf "${OUT}/pslinkb-${V}-${arch}-openwrt.ipk" -C /tmp control.tar.gz data.tar.gz debian-binary
           rm -rf /tmp/ipk /tmp/control.tar.gz /tmp/data.tar.gz /tmp/debian-binary
@@ -315,25 +317,34 @@ jobs:
           path: /tmp/out/
           retention-days: 30
 
-  # ── Windows: 打包 → 验证 → 上传 ──
   package-windows:
     runs-on: windows-latest
     env:
       V: ${{ inputs.version }}
     steps:
-      - name: Download build artifact (windows)
-        uses: actions/download-artifact@v4
-        with:
-          name: windows-x86_64
-          path: /tmp/bins
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          run-id: ${{ inputs.run-id }}
+      - name: Download windows artifact (latest success)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          mkdir -p /tmp/bins
+          for rid in $(gh run list --repo ${{ github.repository }} --workflow build.yml --limit 20 --status success --json databaseId -q '.[].databaseId'); do
+            if gh run view $rid --repo ${{ github.repository }} --json jobs -q '[.jobs[] | select(.name == "build-windows-x86_64" and .conclusion == "success")] | length' | grep -qx '[1-9]'; then
+              gh run download $rid --repo ${{ github.repository }} --name windows-x86_64 --dir /tmp/bins
+              echo "Downloaded windows-x86_64 from run $rid"
+              exit 0
+            fi
+          done
+          echo "ERROR: no successful build-windows-x86_64 found"
+          exit 1
 
       - name: Download deps (pslinkb-stream)
         shell: bash
         run: |
           gh release download ${{ inputs.deps-tag }} --repo ${{ github.repository }} \
-            -p 'pslinkb-build-deps.tar.zst' -D /tmp/ --clobber || echo "WARN: no deps"
+            -p 'pslinkb-build-deps.tar.gz' -D /tmp/ --clobber || echo "WARN: no deps"
+        env:
+          GH_TOKEN: ${{ github.token }}
 
       - name: Package windows
         shell: bash
@@ -344,13 +355,9 @@ jobs:
           rm -rf "$OUT" && mkdir -p "$OUT"
 
           WINBIN="/tmp/bins/pslinkb-x86_64-windows.exe"
+          # Extract stream from deps
+          [ -f /tmp/pslinkb-build-deps.tar.gz ] && mkdir -p /tmp/deps && tar xzf /tmp/pslinkb-build-deps.tar.gz -C /tmp/deps || true
           WINSTREAM="/tmp/deps/stream/x86_64-windows/pslinkb-stream.exe"
-
-          # extract stream from deps tar.zst if not already extracted
-          if [ ! -f "$WINSTREAM" ] && [ -f /tmp/pslinkb-build-deps.tar.zst ]; then
-            mkdir -p /tmp/deps
-            tar --zstd -xf /tmp/pslinkb-build-deps.tar.zst -C /tmp/deps || true
-          fi
           [ -f "$WINSTREAM" ] || WINSTREAM=""
 
           rm -rf /tmp/win && mkdir -p /tmp/win
@@ -374,20 +381,25 @@ jobs:
           path: /tmp/out/
           retention-days: 30
 
-  # ── macOS: 打包 → 上传 ──
   package-macos:
     runs-on: ubuntu-latest
     env:
       V: ${{ inputs.version }}
     steps:
-      - name: Download build artifacts (macOS both archs)
-        uses: actions/download-artifact@v4
-        with:
-          pattern: 'macos-*'
-          path: /tmp/bins
-          merge-multiple: true
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          run-id: ${{ inputs.run-id }}
+      - name: Download macOS artifacts (latest success)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p /tmp/bins
+          for arch in aarch64 x86_64; do
+            for rid in $(gh run list --repo ${{ github.repository }} --workflow build.yml --limit 20 --status success --json databaseId -q '.[].databaseId'); do
+              if gh run view $rid --repo ${{ github.repository }} --json jobs -q "[.jobs[] | select(.name == \"build-macos-${arch}\" and .conclusion == \"success\")] | length" | grep -qx '[1-9]'; then
+                gh run download $rid --repo ${{ github.repository }} --name "macos-${arch}" --dir /tmp/bins
+                echo "Downloaded macos-${arch} from run $rid"
+                break
+              fi
+            done
+          done
 
       - name: Package macOS
         run: |
@@ -417,7 +429,6 @@ jobs:
           path: /tmp/out/
           retention-days: 30
 
-  # ── luci-app: 打包 → 上传 ──
   package-luci:
     runs-on: ubuntu-latest
     env:
@@ -425,7 +436,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install OpenWRT apk tool (x86_64 native)
+      - name: Install OpenWRT apk tool
         run: |
           sudo apt-get install -y zstd
           curl -sL "https://downloads.openwrt.org/snapshots/targets/x86/64/openwrt-sdk-x86-64_gcc-14_musl.Linux-x86_64.tar.zst" -o /tmp/sdk.tar.zst
@@ -451,24 +462,20 @@ jobs:
           LVER=$(cat "$SRC/VERSION" | tr -d '\n')
           rm -rf /tmp/luci-pk && mkdir -p /tmp/luci-pk
 
-          # root/ -> target /
           if [ -d "$SRC/root" ]; then
             cd "$SRC/root" && tar cf - . 2>/dev/null | tar xf - -C /tmp/luci-pk || true
             cd "$GITHUB_WORKSPACE"
           fi
 
-          # htdocs -> /www/
           if [ -d "$SRC/htdocs" ]; then
             mkdir -p /tmp/luci-pk/www
             cp -a "$SRC/htdocs/." /tmp/luci-pk/www/ 2>/dev/null || true
           fi
 
-          echo "=== luci-app files ===" && find /tmp/luci-pk -type f | sort
-
           # tar.gz
           tar czf "${OUT}/luci-app-pslinkb-${LVER}.tar.gz" -C /tmp/luci-pk .
 
-          # APK (arch-independent)
+          # APK
           /usr/local/bin/owrt-apk mkpkg \
             --info "name:luci-app-pslinkb" --info "version:${LVER}" \
             --info "arch:all" --info "depends:pslinkb" \
@@ -493,7 +500,6 @@ jobs:
           path: /tmp/out/
           retention-days: 30
 
-  # ── Release: 收集所有产物 → 创建 Release ──
   release:
     needs: [package-x86_64, package-aarch64, package-windows, package-macos, package-luci]
     runs-on: ubuntu-latest
