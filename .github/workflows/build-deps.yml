@@ -69,7 +69,7 @@ jobs:
       - uses: msys2/setup-msys2@v2
         with:
           msystem: MINGW64
-          install: mingw-w64-x86_64-gcc make
+          install: mingw-w64-x86_64-gcc make git
       - name: Build FFmpeg + stream
         shell: msys2 {0}
         run: |
@@ -85,7 +85,7 @@ jobs:
             --enable-protocol=tcp,rtmp --enable-demuxer=flv --enable-muxer=flv --enable-parser=h264 --enable-network \
             --disable-filters --disable-swscale --disable-bsfs --disable-doc --disable-debug --disable-ffplay --disable-ffprobe \
             --disable-iconv --disable-lzma --disable-bzlib --disable-zlib --disable-runtime-cpudetect
-          make -j$(nproc) && make install
+          make -j4 && make install
           mkdir -p /tmp/ffbuild/bin
           cp src/stream_copy.c /tmp/
           gcc -O2 -static \
@@ -120,7 +120,7 @@ jobs:
             --enable-protocol=tcp,rtmp --enable-demuxer=flv --enable-muxer=flv --enable-parser=h264 --enable-network \
             --disable-filters --disable-swscale --disable-bsfs --disable-doc --disable-debug --disable-ffplay --disable-ffprobe \
             --disable-iconv --disable-lzma --disable-bzlib --disable-zlib --disable-runtime-cpudetect
-          make -j$(nproc) && make install
+          make -j4 && make install
           mkdir -p /tmp/ffbuild/bin
           cp src/stream_copy.c /tmp/
           gcc -O2 -flto \
