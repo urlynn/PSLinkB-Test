@@ -133,9 +133,9 @@ jobs:
       - name: Create Release and Upload
         run: |
           V=${{ inputs.version }}
-          gh release delete "v$V" --repo ${{ github.repository }} -y || true
           gh release create "v$V" /tmp/pkg/* \
             --repo ${{ github.repository }} \
             --title "v$V" \
             --notes "pslinkb v$V — auto-built and verified by CI" \
-            --generate-notes
+            --generate-notes || true
+          gh release upload "v$V" /tmp/pkg/* --repo ${{ github.repository }} --clobber
