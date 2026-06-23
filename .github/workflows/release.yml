@@ -23,8 +23,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@v1
         with:
+          toolchain: stable
           targets: x86_64-unknown-linux-musl
       - run: sudo apt-get install -y musl-tools
       - run: |
@@ -43,8 +44,9 @@ jobs:
     runs-on: ubuntu-24.04-arm
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@v1
         with:
+          toolchain: stable
           targets: aarch64-unknown-linux-musl
       - run: sudo apt-get install -y musl-tools
       - run: |
@@ -63,7 +65,9 @@ jobs:
     runs-on: macos-26
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@v1
+        with:
+          toolchain: stable
       - run: |
           cargo build --release --features cli,channel-broadcast,ffi-ffmpeg,dns-redirect
           cp target/release/pslinkb /tmp/pslinkb-aarch64-macos
@@ -76,7 +80,9 @@ jobs:
     runs-on: macos-26-intel
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@v1
+        with:
+          toolchain: stable
         with:
           targets: x86_64-apple-darwin
       - run: |
@@ -91,7 +97,9 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@v1
+        with:
+          toolchain: stable
         with:
           targets: x86_64-pc-windows-gnu
       - run: |
