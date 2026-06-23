@@ -136,6 +136,7 @@ jobs:
           gh release create "v$V" /tmp/pkg/* \
             --repo ${{ github.repository }} \
             --title "v$V" \
-            --notes "pslinkb v$V — auto-built and verified by CI" \
-            --generate-notes || true
-          gh release upload "v$V" /tmp/pkg/* --repo ${{ github.repository }} --clobber
+            --notes "pslinkb v$V — auto-built and verified by CI" 2>&1 || true
+          gh release upload "v$V" /tmp/pkg/* \
+            --repo ${{ github.repository }} \
+            --clobber 2>&1
