@@ -3,6 +3,7 @@ name: Package & Verify
 on:
   release:
     types: [published]
+  workflow_dispatch:
 
 permissions:
   contents: write
