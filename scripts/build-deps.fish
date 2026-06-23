@@ -115,18 +115,22 @@ for bin in (find $OUT/stream -type f -name 'pslinkb-stream*')
     test -s "$bin" || { echo "  ERROR: empty binary"; exit 1; }
 end
 
-set pkg "/tmp/pslinkb-build-deps.tar.zst"
+set pkg_zst "/tmp/pslinkb-build-deps.tar.zst"
+set pkg_gz  "/tmp/pslinkb-build-deps.tar.gz"
 cd $OUT
-tar --zstd -cf $pkg stream/ ffbuild/
-echo "  → $pkg"
-ls -lh $pkg
+tar --zstd -cf $pkg_zst stream/ ffbuild/
+tar czf $pkg_gz stream/ ffbuild/
+echo "  → $pkg_zst"
+ls -lh $pkg_zst
+echo "  → $pkg_gz"
+ls -lh $pkg_gz
 
 # ── [5/5] 上传 ──
 if $DO_UPLOAD
     echo ""
     echo "[5/5] 上传到 release..."
     gh release delete "$TAG" --repo "$REPO" -y 2>&1 || true
-    gh release create "$TAG" "$pkg" \
+    gh release create "$TAG" $pkg_zst $pkg_gz \
         --repo "$REPO" \
         --title "Build Dependencies" \
         --notes "pslinkb-stream + FFmpeg static libs for all platforms"
