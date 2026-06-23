@@ -44,10 +44,12 @@ jobs:
           for arch in x86_64 aarch64; do
             mkdir -p /tmp/pkg/usr/bin
             cp /tmp/bins/pslinkb-${arch}-openwrt /tmp/pkg/usr/bin/pslinkb
+            chmod +x /tmp/pkg/usr/bin/pslinkb
             [ -f /tmp/deps/stream/${arch}-linux-musl/pslinkb-stream ] && cp /tmp/deps/stream/${arch}-linux-musl/pslinkb-stream /tmp/pkg/usr/bin/ || true
             (cd /tmp/pkg && tar czf /tmp/out/pslinkb-${V}-${arch}-openwrt.tar.gz usr/) && rm -rf /tmp/pkg
             mkdir -p /tmp/ipk/usr/bin /tmp/ipk/CONTROL
             cp /tmp/bins/pslinkb-${arch}-openwrt /tmp/ipk/usr/bin/pslinkb
+            chmod +x /tmp/ipk/usr/bin/pslinkb
             [ -f /tmp/deps/stream/${arch}-linux-musl/pslinkb-stream ] && cp /tmp/deps/stream/${arch}-linux-musl/pslinkb-stream /tmp/ipk/usr/bin/ || true
             A=$([ "$arch" = "x86_64" ] && echo "x86_64" || echo "aarch64_generic")
             echo "Package: pslinkb" > /tmp/ipk/CONTROL/control
@@ -59,6 +61,7 @@ jobs:
             (cd /tmp && tar czf /tmp/out/pslinkb-${V}-${arch}-opkg.ipk debian-binary control.tar.gz data.tar.gz)
             rm -rf /tmp/ipk
             mkdir -p /tmp/bun && cp /tmp/bins/pslinkb-${arch}-bundle /tmp/bun/pslinkb
+            chmod +x /tmp/bun/pslinkb
             [ -f /tmp/deps/stream/${arch}-linux-musl/pslinkb-stream ] && cp /tmp/deps/stream/${arch}-linux-musl/pslinkb-stream /tmp/bun/ || true
             (cd /tmp/bun && tar czf /tmp/out/pslinkb-${V}-${arch}-bundle.tar.gz .) && rm -rf /tmp/bun
           done
