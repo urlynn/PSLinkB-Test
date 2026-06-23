@@ -111,12 +111,11 @@ jobs:
             --disable-runtime-cpudetect
           make -j4 && make install
           mkdir -p /tmp/ffbuild/bin
+          export PKG_CONFIG_PATH=/tmp/ffbuild/lib/pkgconfig
           gcc -O2 -static \
             -DSTREAM_VERSION=\"1.0\" \
-            -I/tmp/ffbuild/include -L/tmp/ffbuild/lib \
             /tmp/stream_copy.c \
-            -lavformat -lavcodec -lavutil \
-            -lwinmm -lole32 -lbcrypt -lws2_32 \
+            $(pkg-config --cflags --libs --static libavformat libavcodec libavutil) \
             -o /tmp/ffbuild/bin/pslinkb-stream.exe
       - uses: actions/upload-artifact@v4
         with:
