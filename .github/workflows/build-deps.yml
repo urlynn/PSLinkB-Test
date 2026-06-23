@@ -5,7 +5,7 @@ on:
 
 jobs:
   macos-aarch64:
-    runs-on: macos-latest
+    runs-on: macos-26
     steps:
       - uses: actions/checkout@v4
       - name: Install deps
@@ -34,7 +34,7 @@ jobs:
             /tmp/ffbuild/include/
 
   macos-x86_64:
-    runs-on: macos-latest-large
+    runs-on: macos-26-large
     steps:
       - uses: actions/checkout@v4
       - name: Install deps
@@ -112,14 +112,10 @@ jobs:
       run:
         shell: bash
     steps:
-      - name: Install MinGW
-        run: choco install mingw -y --no-progress
-      - name: Build FFmpeg + stream
+      - name: Build FFmpeg + stream (native aarch64)
         run: |
           git clone --branch n8.0 --depth 1 https://github.com/FFmpeg/FFmpeg.git /tmp/ffmpeg
           cd /tmp/ffmpeg
-          # Note: aarch64-w64-mingw32 toolchain may need manual setup
-          # Fallback: use gcc native
           ./configure \
             --prefix=/tmp/ffbuild \
             --target-os=mingw32 --arch=aarch64 \
