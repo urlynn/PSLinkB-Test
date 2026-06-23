@@ -2,9 +2,35 @@ name: Build Deps (stream + ffmpeg)
 
 on:
   workflow_dispatch:
+    inputs:
+      platform:
+        description: 'Target platform'
+        required: true
+        type: choice
+        options: [all, macos-aarch64, macos-x86_64, windows-x86_64, windows-aarch64]
+        default: 'all'
+    inputs:
+      macos-arm64:
+        description: 'macOS aarch64 FFmpeg'
+        type: boolean
+        default: true
+      macos-x86_64:
+        description: 'macOS x86_64 FFmpeg'
+        type: boolean
+        default: true
+      windows-x86_64:
+        description: 'Windows x86_64 stream'
+        type: boolean
+        default: true
+      windows-arm64:
+        description: 'Windows aarch64 stream'
+        type: boolean
+        default: false
 
 jobs:
   macos-aarch64:
+    if: ${{ github.event.inputs.platform == 'all' || github.event.inputs.platform == 'macos-aarch64' }}
+    if: ${{ inputs.macos-arm64 }}
     runs-on: macos-26
     steps:
       - uses: actions/checkout@v4
@@ -34,6 +60,7 @@ jobs:
             /tmp/ffbuild/include/
 
   macos-x86_64:
+    if: ${{ inputs.macos-x86_64 }}
     runs-on: macos-26-intel
     steps:
       - uses: actions/checkout@v4
@@ -63,6 +90,7 @@ jobs:
             /tmp/ffbuild/include/
 
   windows-x86_64:
+    if: ${{ inputs.windows-x86_64 }}
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -113,6 +141,7 @@ jobs:
           path: /tmp/ffbuild/bin/pslinkb-stream.exe
 
   windows-aarch64:
+    if: ${{ inputs.windows-arm64 }}
     runs-on: windows-11-arm
     defaults:
       run:
