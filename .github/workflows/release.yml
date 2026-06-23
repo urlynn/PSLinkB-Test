@@ -3,6 +3,10 @@ name: Release
 on:
   workflow_dispatch:
     inputs:
+      run-id:
+        description: 'Build workflow run ID'
+        required: true
+        type: string
       version:
         description: 'Version (e.g. 0.3.4)'
         required: true
@@ -17,52 +21,7 @@ permissions:
   contents: write
 
 jobs:
-  build-linux-x86_64:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - run: rustup target add x86_64-unknown-linux-musl
-      - run: sudo apt-get install -y musl-tools
-      - name: Build openwrt
-        run: cargo build --release --target x86_64-unknown-linux-musl --features openwrt,channel-mpsc,external-ffmpeg && cp target/x86_64-unknown-linux-musl/release/pslinkb /tmp/pslinkb-x86_64-openwrt
-      - name: Build bundle
-        run: cargo build --release --target x86_64-unknown-linux-musl --features cli,channel-mpsc,external-ffmpeg,dns-redirect && cp target/x86_64-unknown-linux-musl/release/pslinkb /tmp/pslinkb-x86_64-bundle
-      - uses: actions/upload-artifact@v4
-        with:
-          name: linux-x86_64
-          path: /tmp/pslinkb-x86_64-*
-
-  build-linux-aarch64:
-    runs-on: ubuntu-24.04-arm
-    steps:
-      - uses: actions/checkout@v4
-      - run: rustup target add aarch64-unknown-linux-musl
-      - run: sudo apt-get install -y musl-tools
-      - name: Build openwrt
-        run: cargo build --release --target aarch64-unknown-linux-musl --features openwrt,channel-mpsc,external-ffmpeg && cp target/aarch64-unknown-linux-musl/release/pslinkb /tmp/pslinkb-aarch64-openwrt
-      - name: Build bundle
-        run: cargo build --release --target aarch64-unknown-linux-musl --features cli,channel-mpsc,external-ffmpeg,dns-redirect && cp target/aarch64-unknown-linux-musl/release/pslinkb /tmp/pslinkb-aarch64-bundle
-      - uses: actions/upload-artifact@v4
-        with:
-          name: linux-aarch64
-          path: /tmp/pslinkb-aarch64-*
-
-  build-windows-x86_64:
-    runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@v4
-      - run: rustup target add x86_64-pc-windows-gnu
-      - name: Build
-        run: |
-          cargo build --release --target x86_64-pc-windows-gnu --features cli,channel-broadcast,external-ffmpeg,dns-redirect
-          cp target/x86_64-pc-windows-gnu/release/pslinkb.exe pslinkb-x86_64-windows.exe
-      - uses: actions/upload-artifact@v4
-        with:
-          name: windows-x86_64
-          path: pslinkb-x86_64-windows.exe
-
   package:
-    needs: [build-linux-x86_64, build-linux-aarch64, build-windows-x86_64]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4
@@ -70,6 +29,8 @@ jobs:
           pattern: '*'
           path: /tmp/bins
           merge-multiple: true
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          run-id: ${{ inputs.run-id }}
       - name: Download deps (stream)
         run: |
           gh release download ${{ inputs.deps-tag }} --repo ${{ github.repository }} \
@@ -111,6 +72,7 @@ jobs:
         with:
           name: packages
           path: /tmp/out/
+          retention-days: 30
 
   verify-opkg-x86_64:
     needs: package
@@ -124,7 +86,7 @@ jobs:
           curl -sL https://downloads.openwrt.org/releases/24.10.4/targets/x86/64/openwrt-24.10.4-x86-64-rootfs.tar.gz -o /tmp/rootfs.tar.gz
           mkdir -p /tmp/owrt && sudo tar xzf /tmp/rootfs.tar.gz -C /tmp/owrt --exclude='dev/*'
           mkdir -p /tmp/owrt/tmp /tmp/owrt/dev /tmp/owrt/var/lock
-          ls -la /tmp/pkg/
+          ls /tmp/pkg/
           cp /tmp/pkg/pslinkb-*-x86_64-opkg.ipk /tmp/owrt/tmp/test.ipk
           sudo chroot /tmp/owrt /bin/opkg install /tmp/test.ipk --force-overwrite
           sudo chroot /tmp/owrt /usr/bin/pslinkb --version
@@ -141,8 +103,8 @@ jobs:
           curl -sL https://downloads.openwrt.org/releases/24.10.4/targets/armsr/armv8/openwrt-24.10.4-armsr-armv8-rootfs.tar.gz -o /tmp/rootfs.tar.gz
           mkdir -p /tmp/owrt && sudo tar xzf /tmp/rootfs.tar.gz -C /tmp/owrt --exclude='dev/*'
           mkdir -p /tmp/owrt/tmp /tmp/owrt/dev /tmp/owrt/var/lock
-          cp /tmp/pkg/pslinkb-*-aarch64-opkg.ipk /tmp/owrt/tmp/
-          sudo chroot /tmp/owrt /bin/opkg install /tmp/pslinkb-*.ipk --force-overwrite
+          cp /tmp/pkg/pslinkb-*-aarch64-opkg.ipk /tmp/owrt/tmp/test.ipk
+          sudo chroot /tmp/owrt /bin/opkg install /tmp/test.ipk --force-overwrite
           sudo chroot /tmp/owrt /usr/bin/pslinkb --version
 
   verify-windows:

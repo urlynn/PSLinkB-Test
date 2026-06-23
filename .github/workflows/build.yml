@@ -1,0 +1,71 @@
+name: Build
+
+on:
+  workflow_dispatch:
+    inputs:
+      linux-x86_64:
+        description: 'Build linux-x86_64'
+        type: boolean
+        required: false
+        default: true
+      linux-aarch64:
+        description: 'Build linux-aarch64'
+        type: boolean
+        required: false
+        default: true
+      windows-x86_64:
+        description: 'Build windows-x86_64'
+        type: boolean
+        required: false
+        default: true
+
+jobs:
+  build-linux-x86_64:
+    if: ${{ inputs.linux-x86_64 || github.event_name != 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: rustup target add x86_64-unknown-linux-musl
+      - run: sudo apt-get install -y musl-tools
+      - name: Build openwrt
+        run: cargo build --release --target x86_64-unknown-linux-musl --features openwrt,channel-mpsc,external-ffmpeg && cp target/x86_64-unknown-linux-musl/release/pslinkb /tmp/pslinkb-x86_64-openwrt
+      - name: Build bundle
+        run: cargo build --release --target x86_64-unknown-linux-musl --features cli,channel-mpsc,external-ffmpeg,dns-redirect && cp target/x86_64-unknown-linux-musl/release/pslinkb /tmp/pslinkb-x86_64-bundle
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-x86_64
+          path: /tmp/pslinkb-x86_64-*
+          retention-days: 30
+
+  build-linux-aarch64:
+    if: ${{ inputs.linux-aarch64 || github.event_name != 'workflow_dispatch' }}
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@v4
+      - run: rustup target add aarch64-unknown-linux-musl
+      - run: sudo apt-get install -y musl-tools
+      - name: Build openwrt
+        run: cargo build --release --target aarch64-unknown-linux-musl --features openwrt,channel-mpsc,external-ffmpeg && cp target/aarch64-unknown-linux-musl/release/pslinkb /tmp/pslinkb-aarch64-openwrt
+      - name: Build bundle
+        run: cargo build --release --target aarch64-unknown-linux-musl --features cli,channel-mpsc,external-ffmpeg,dns-redirect && cp target/aarch64-unknown-linux-musl/release/pslinkb /tmp/pslinkb-aarch64-bundle
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-aarch64
+          path: /tmp/pslinkb-aarch64-*
+          retention-days: 30
+
+  build-windows-x86_64:
+    if: ${{ inputs.windows-x86_64 || github.event_name != 'workflow_dispatch' }}
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: rustup target add x86_64-pc-windows-gnu
+      - name: Build
+        run: |
+          cargo build --release --target x86_64-pc-windows-gnu --features cli,channel-broadcast,external-ffmpeg,dns-redirect
+          cp target/x86_64-pc-windows-gnu/release/pslinkb.exe pslinkb-x86_64-windows.exe
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-x86_64
+          path: pslinkb-x86_64-windows.exe
+          retention-days: 30
