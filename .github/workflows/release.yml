@@ -23,6 +23,28 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Download deps (stream + ffmpeg libs)
+        run: |
+          gh release download ${{ inputs.deps-tag }} --repo ${{ github.repository }} \
+            -p 'pslinkb-build-deps.tar.zst' -D /tmp/ --clobber 2>/dev/null || true
+          if [ -f /tmp/pslinkb-build-deps.tar.zst ]; then
+            tar --zstd -xf /tmp/pslinkb-build-deps.tar.zst -C /tmp/deps
+            # deps use {arch}-{os} naming: x86_64-linux-musl, aarch64-macos
+            # build.rs expects {os}-{arch}: linux-x86_64, macos-aarch64
+            for d in /tmp/deps/ffbuild/x86_64-linux-musl /tmp/deps/ffbuild/aarch64-linux-musl \
+                     /tmp/deps/ffbuild/aarch64-macos /tmp/deps/ffbuild/x86_64-macos; do
+              [ -d "$d" ] || continue
+              b=$(basename $d)
+              case $b in
+                x86_64-linux-musl)   t=linux-x86_64 ;;
+                aarch64-linux-musl)  t=linux-aarch64 ;;
+                x86_64-macos)        t=macos-x86_64 ;;
+                aarch64-macos)       t=macos-aarch64 ;;
+                *) continue ;;
+              esac
+              mkdir -p ffbuild/$t && cp -r $d/* ffbuild/$t/ && echo "  ffbuild/$t ✓"
+            done
+          fi
       - run: rustup target add x86_64-unknown-linux-musl
       - run: sudo apt-get install -y musl-tools
       - run: |
