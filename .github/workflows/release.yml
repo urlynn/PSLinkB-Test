@@ -1,10 +1,10 @@
-name: Release (Compile + Package + Verify)
+name: Release
 
 on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Release version (e.g. 0.3.3)'
+        description: 'Version (e.g. 0.3.4)'
         required: true
         type: string
       deps-tag:
@@ -17,27 +17,17 @@ permissions:
   contents: write
 
 jobs:
-  # ═══════════════════════════════════════════
-  # Stage 1: 编译 Rust 所有目标 (6 jobs 并行)
-  # ═══════════════════════════════════════════
+  # ═══ Stage 1: 编译 Rust 所有目标 ═══
 
   build-linux-x86_64:
     runs-on: ubuntu-latest
-    outputs:
-      openwrt: ${{ steps.b.outputs.openwrt }}
-      bundle: ${{ steps.b.outputs.bundle }}
-      portable: ${{ steps.b.outputs.portable }}
     steps:
       - uses: actions/checkout@v4
-      - uses: actions-rs/toolchain@v1
+      - uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: stable
-          target: x86_64-unknown-linux-musl
-      - name: Install musl-tools
-        run: sudo apt-get install -y musl-tools
-      - name: Build
-        run: |
-          V=${{ inputs.version }}
+          targets: x86_64-unknown-linux-musl
+      - run: sudo apt-get install -y musl-tools
+      - run: |
           cargo build --release --target x86_64-unknown-linux-musl --features openwrt,channel-mpsc,external-ffmpeg
           cp target/x86_64-unknown-linux-musl/release/pslinkb /tmp/pslinkb-x86_64-openwrt
           cargo build --release --target x86_64-unknown-linux-musl --features cli,channel-mpsc,external-ffmpeg,dns-redirect
@@ -53,15 +43,11 @@ jobs:
     runs-on: ubuntu-24.04-arm
     steps:
       - uses: actions/checkout@v4
-      - uses: actions-rs/toolchain@v1
+      - uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: stable
-          target: aarch64-unknown-linux-musl
-      - name: Install musl-tools
-        run: sudo apt-get install -y musl-tools
-      - name: Build
-        run: |
-          V=${{ inputs.version }}
+          targets: aarch64-unknown-linux-musl
+      - run: sudo apt-get install -y musl-tools
+      - run: |
           cargo build --release --target aarch64-unknown-linux-musl --features openwrt,channel-mpsc,external-ffmpeg
           cp target/aarch64-unknown-linux-musl/release/pslinkb /tmp/pslinkb-aarch64-openwrt
           cargo build --release --target aarch64-unknown-linux-musl --features cli,channel-mpsc,external-ffmpeg,dns-redirect
@@ -77,9 +63,7 @@ jobs:
     runs-on: macos-26
     steps:
       - uses: actions/checkout@v4
-      - uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
+      - uses: dtolnay/rust-toolchain@stable
       - run: |
           cargo build --release --features cli,channel-broadcast,ffi-ffmpeg,dns-redirect
           cp target/release/pslinkb /tmp/pslinkb-aarch64-macos
@@ -92,10 +76,9 @@ jobs:
     runs-on: macos-26-intel
     steps:
       - uses: actions/checkout@v4
-      - uses: actions-rs/toolchain@v1
+      - uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: stable
-          target: x86_64-apple-darwin
+          targets: x86_64-apple-darwin
       - run: |
           cargo build --release --target x86_64-apple-darwin --features cli,channel-broadcast,ffi-ffmpeg,dns-redirect
           cp target/x86_64-apple-darwin/release/pslinkb /tmp/pslinkb-x86_64-macos
@@ -108,10 +91,9 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions-rs/toolchain@v1
+      - uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: stable
-          target: x86_64-pc-windows-gnu
+          targets: x86_64-pc-windows-gnu
       - run: |
           cargo build --release --target x86_64-pc-windows-gnu --features cli,channel-broadcast,external-ffmpeg,dns-redirect
           cp target/x86_64-pc-windows-gnu/release/pslinkb.exe /tmp/pslinkb-x86_64-windows.exe
@@ -120,13 +102,13 @@ jobs:
           name: windows-x86_64
           path: /tmp/pslinkb-x86_64-windows.exe
 
-  # ═══════════════════════════════════════════
-  # Stage 2: 打包所有格式
-  # ═══════════════════════════════════════════
+  # ═══ Stage 2: 打包所有格式 ═══
 
   package:
     needs: [build-linux-x86_64, build-linux-aarch64, build-macos-aarch64, build-macos-x86_64, build-windows-x86_64]
     runs-on: ubuntu-latest
+    outputs:
+      out-dir: /tmp/out
     steps:
       - uses: actions/download-artifact@v4
         with:
@@ -136,87 +118,80 @@ jobs:
 
       - name: Download deps (stream)
         run: |
-          gh release download ${{ inputs.deps-tag }} \
-            --repo ${{ github.repository }} \
-            -p 'pslinkb-build-deps.tar.zst' \
-            -D /tmp/ --clobber || echo "WARN: no deps"
-          if [ -f /tmp/pslinkb-build-deps.tar.zst ]; then
-            tar --zstd -xf /tmp/pslinkb-build-deps.tar.zst -C /tmp/deps
-          fi
+          gh release download ${{ inputs.deps-tag }} --repo ${{ github.repository }} \
+            -p 'pslinkb-build-deps.tar.zst' -D /tmp/ --clobber || echo "WARN: no deps"
+          mkdir -p /tmp/deps
+          [ -f /tmp/pslinkb-build-deps.tar.zst ] && tar --zstd -xf /tmp/pslinkb-build-deps.tar.zst -C /tmp/deps || true
 
-      - name: Package all formats
+      - name: Package all
         run: |
           V=${{ inputs.version }}
-          mkdir -p /tmp/out
+          rm -rf /tmp/out && mkdir -p /tmp/out
 
           for arch in x86_64 aarch64; do
             # OpenWRT tar.gz
             mkdir -p /tmp/pkg/usr/bin
             cp /tmp/bins/pslinkb-${arch}-openwrt /tmp/pkg/usr/bin/pslinkb
-            if [ -f /tmp/deps/stream/${arch}-linux-musl/pslinkb-stream ]; then
-              cp /tmp/deps/stream/${arch}-linux-musl/pslinkb-stream /tmp/pkg/usr/bin/
-            fi
-            cd /tmp/pkg && tar czf /tmp/out/pslinkb-${V}-${arch}-openwrt.tar.gz usr/ && rm -rf usr/
+            [ -f /tmp/deps/stream/${arch}-linux-musl/pslinkb-stream ] && cp /tmp/deps/stream/${arch}-linux-musl/pslinkb-stream /tmp/pkg/usr/bin/ || true
+            (cd /tmp/pkg && tar czf /tmp/out/pslinkb-${V}-${arch}-openwrt.tar.gz usr/) && rm -rf /tmp/pkg
 
             # IPK
             mkdir -p /tmp/ipk/usr/bin /tmp/ipk/CONTROL
             cp /tmp/bins/pslinkb-${arch}-openwrt /tmp/ipk/usr/bin/pslinkb
-            if [ -f /tmp/deps/stream/${arch}-linux-musl/pslinkb-stream ]; then
-              cp /tmp/deps/stream/${arch}-linux-musl/pslinkb-stream /tmp/ipk/usr/bin/pslinkb-stream
-            fi
-            ARCH_CTL=$([ "$arch" = "x86_64" ] && echo "x86_64" || echo "aarch64_generic")
+            [ -f /tmp/deps/stream/${arch}-linux-musl/pslinkb-stream ] && cp /tmp/deps/stream/${arch}-linux-musl/pslinkb-stream /tmp/ipk/usr/bin/ || true
+            A=$([ "$arch" = "x86_64" ] && echo "x86_64" || echo "aarch64_generic")
             echo "Package: pslinkb" > /tmp/ipk/CONTROL/control
             echo "Version: $V-r0" >> /tmp/ipk/CONTROL/control
-            echo "Architecture: $ARCH_CTL" >> /tmp/ipk/CONTROL/control
+            echo "Architecture: $A" >> /tmp/ipk/CONTROL/control
             echo "Depends: libc,libpthread" >> /tmp/ipk/CONTROL/control
-            cd /tmp/ipk && tar czf /tmp/ct.tar.gz -C CONTROL . && tar czf /tmp/dt.tar.gz usr
-            echo "2.0" > /tmp/db && cd /tmp
-            tar czf /tmp/out/pslinkb-${V}-${arch}-opkg.ipk /tmp/ct.tar.gz /tmp/dt.tar.gz /tmp/db
+            (cd /tmp/ipk && tar czf /tmp/ct.tar.gz -C CONTROL . && tar czf /tmp/dt.tar.gz usr)
+            echo "2.0" > /tmp/db
+            (cd /tmp && tar czf /tmp/out/pslinkb-${V}-${arch}-opkg.ipk /tmp/ct.tar.gz /tmp/dt.tar.gz /tmp/db)
             rm -rf /tmp/ipk
 
             # portable
-            mkdir -p /tmp/portable
-            cp /tmp/bins/pslinkb-${arch}-portable /tmp/portable/pslinkb
-            tar czf /tmp/out/pslinkb-${V}-${arch}-portable.tar.gz -C /tmp/portable pslinkb
+            mkdir -p /tmp/port && cp /tmp/bins/pslinkb-${arch}-portable /tmp/port/pslinkb
+            (cd /tmp/port && tar czf /tmp/out/pslinkb-${V}-${arch}-portable.tar.gz pslinkb) && rm -rf /tmp/port
 
             # bundle
-            mkdir -p /tmp/bundle
-            cp /tmp/bins/pslinkb-${arch}-bundle /tmp/bundle/pslinkb
-            if [ -f /tmp/deps/stream/${arch}-linux-musl/pslinkb-stream ]; then
-              cp /tmp/deps/stream/${arch}-linux-musl/pslinkb-stream /tmp/bundle/
-            fi
-            tar czf /tmp/out/pslinkb-${V}-${arch}-bundle.tar.gz -C /tmp/bundle .
+            mkdir -p /tmp/bun && cp /tmp/bins/pslinkb-${arch}-bundle /tmp/bun/pslinkb
+            [ -f /tmp/deps/stream/${arch}-linux-musl/pslinkb-stream ] && cp /tmp/deps/stream/${arch}-linux-musl/pslinkb-stream /tmp/bun/ || true
+            (cd /tmp/bun && tar czf /tmp/out/pslinkb-${V}-${arch}-bundle.tar.gz .) && rm -rf /tmp/bun
           done
 
           # macOS
           cp /tmp/bins/pslinkb-aarch64-macos /tmp/out/pslinkb-${V}-aarch64-macos
           cp /tmp/bins/pslinkb-x86_64-macos /tmp/out/pslinkb-${V}-x86_64-macos
 
-          # Windows
+          # Windows zip
           mkdir -p /tmp/win
           cp /tmp/bins/pslinkb-x86_64-windows.exe /tmp/win/pslinkb.exe
-          if [ -f /tmp/deps/stream/x86_64-windows/pslinkb-stream.exe ]; then
-            cp /tmp/deps/stream/x86_64-windows/pslinkb-stream.exe /tmp/win/
-          fi
-          (cd /tmp/win && zip -q /tmp/out/pslinkb-${V}-x86_64-windows.zip *)
+          [ -f /tmp/deps/stream/x86_64-windows/pslinkb-stream.exe ] && cp /tmp/deps/stream/x86_64-windows/pslinkb-stream.exe /tmp/win/ || true
+          (cd /tmp/win && zip -qr /tmp/out/pslinkb-${V}-x86_64-windows.zip .) && rm -rf /tmp/win
 
-          # Upload all
-          gh release upload "v$V" /tmp/out/* --repo ${{ github.repository }} --clobber
-          echo "PACKAGE DONE"
+          ls -la /tmp/out/
+          echo "PACKAGED: $(ls /tmp/out/ | wc -l) files"
 
-  # ═══════════════════════════════════════════
-  # Stage 3: 验证
-  # ═══════════════════════════════════════════
+      - uses: actions/upload-artifact@v4
+        with:
+          name: packages
+          path: /tmp/out/
+
+  # ═══ Stage 3: 验证（全通过才继续）═══
 
   verify-opkg-x86_64:
     needs: package
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: packages
+          path: /tmp/pkg
       - run: |
           curl -sL https://downloads.openwrt.org/releases/24.10.4/targets/x86/64/openwrt-24.10.4-x86-64-rootfs.tar.gz -o /tmp/rootfs.tar.gz
           mkdir -p /tmp/owrt && sudo tar xzf /tmp/rootfs.tar.gz -C /tmp/owrt --exclude='dev/*'
           mkdir -p /tmp/owrt/tmp /tmp/owrt/dev /tmp/owrt/var/lock
-          gh release download "v${{ inputs.version }}" --repo ${{ github.repository }} -p 'x86_64-opkg.ipk' -D /tmp/owrt/tmp/ --clobber
+          cp /tmp/pkg/pslinkb-*-x86_64-opkg.ipk /tmp/owrt/tmp/
           sudo chroot /tmp/owrt /bin/opkg install /tmp/pslinkb-*.ipk --force-overwrite
           sudo chroot /tmp/owrt /usr/bin/pslinkb --version
 
@@ -224,11 +199,15 @@ jobs:
     needs: package
     runs-on: ubuntu-24.04-arm
     steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: packages
+          path: /tmp/pkg
       - run: |
           curl -sL https://downloads.openwrt.org/releases/24.10.4/targets/armsr/armv8/openwrt-24.10.4-armsr-armv8-rootfs.tar.gz -o /tmp/rootfs.tar.gz
           mkdir -p /tmp/owrt && sudo tar xzf /tmp/rootfs.tar.gz -C /tmp/owrt --exclude='dev/*'
           mkdir -p /tmp/owrt/tmp /tmp/owrt/dev /tmp/owrt/var/lock
-          gh release download "v${{ inputs.version }}" --repo ${{ github.repository }} -p 'aarch64-opkg.ipk' -D /tmp/owrt/tmp/ --clobber
+          cp /tmp/pkg/pslinkb-*-aarch64-opkg.ipk /tmp/owrt/tmp/
           sudo chroot /tmp/owrt /bin/opkg install /tmp/pslinkb-*.ipk --force-overwrite
           sudo chroot /tmp/owrt /usr/bin/pslinkb --version
 
@@ -236,15 +215,41 @@ jobs:
     needs: package
     runs-on: macos-26
     steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: packages
+          path: /tmp/pkg
       - run: |
-          chmod +x /tmp/pslinkb-aarch64-macos
-          /tmp/pslinkb-aarch64-macos --version
+          chmod +x /tmp/pkg/pslinkb-*-aarch64-macos
+          /tmp/pkg/pslinkb-*-aarch64-macos --version
 
   verify-windows:
     needs: package
     runs-on: windows-latest
     steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: packages
+          path: /tmp/pkg
       - run: |
-          gh release download "v${{ inputs.version }}" --repo ${{ github.repository }} -p 'windows.zip' -D . --clobber
-          unzip pslinkb-*.zip
-          ./pslinkb.exe --version
+          unzip -q /tmp/pkg/pslinkb-*-windows.zip -d /tmp/win
+          /tmp/win/pslinkb.exe --version
+
+  # ═══ Stage 4: 上传到 Release（仅验证通过）═══
+
+  release:
+    needs: [verify-opkg-x86_64, verify-opkg-aarch64, verify-macos, verify-windows]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: packages
+          path: /tmp/pkg
+      - name: Create Release and Upload
+        run: |
+          V=${{ inputs.version }}
+          gh release create "v$V" /tmp/pkg/* \
+            --repo ${{ github.repository }} \
+            --title "v$V" \
+            --notes "pslinkb v$V — auto-built and verified by CI" \
+            --generate-notes
