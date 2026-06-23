@@ -23,10 +23,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@v1
-        with:
-          toolchain: stable
-          targets: x86_64-unknown-linux-musl
+      - run: rustup target add x86_64-unknown-linux-musl
       - run: sudo apt-get install -y musl-tools
       - run: |
           cargo build --release --target x86_64-unknown-linux-musl --features openwrt,channel-mpsc,external-ffmpeg
@@ -44,10 +41,7 @@ jobs:
     runs-on: ubuntu-24.04-arm
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@v1
-        with:
-          toolchain: stable
-          targets: aarch64-unknown-linux-musl
+      - run: rustup target add aarch64-unknown-linux-musl
       - run: sudo apt-get install -y musl-tools
       - run: |
           cargo build --release --target aarch64-unknown-linux-musl --features openwrt,channel-mpsc,external-ffmpeg
@@ -65,9 +59,6 @@ jobs:
     runs-on: macos-26
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@v1
-        with:
-          toolchain: stable
       - run: |
           cargo build --release --features cli,channel-broadcast,ffi-ffmpeg,dns-redirect
           cp target/release/pslinkb /tmp/pslinkb-aarch64-macos
@@ -80,10 +71,7 @@ jobs:
     runs-on: macos-26-intel
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@v1
-        with:
-          toolchain: stable
-          targets: x86_64-apple-darwin
+      - run: rustup target add x86_64-apple-darwin
       - run: |
           cargo build --release --target x86_64-apple-darwin --features cli,channel-broadcast,ffi-ffmpeg,dns-redirect
           cp target/x86_64-apple-darwin/release/pslinkb /tmp/pslinkb-x86_64-macos
@@ -96,10 +84,7 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@v1
-        with:
-          toolchain: stable
-          targets: x86_64-pc-windows-gnu
+      - run: rustup target add x86_64-pc-windows-gnu
       - run: |
           cargo build --release --target x86_64-pc-windows-gnu --features cli,channel-broadcast,external-ffmpeg,dns-redirect
           cp target/x86_64-pc-windows-gnu/release/pslinkb.exe /tmp/pslinkb-x86_64-windows.exe
