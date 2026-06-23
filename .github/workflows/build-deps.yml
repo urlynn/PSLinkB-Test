@@ -3,13 +3,6 @@ name: Build Deps (stream + ffmpeg)
 on:
   workflow_dispatch:
     inputs:
-      platform:
-        description: 'Target platform'
-        required: true
-        type: choice
-        options: [all, macos-aarch64, macos-x86_64, windows-x86_64, windows-aarch64]
-        default: 'all'
-    inputs:
       macos-arm64:
         description: 'macOS aarch64 FFmpeg'
         type: boolean
