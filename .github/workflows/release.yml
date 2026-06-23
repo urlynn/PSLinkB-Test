@@ -124,8 +124,9 @@ jobs:
           curl -sL https://downloads.openwrt.org/releases/24.10.4/targets/x86/64/openwrt-24.10.4-x86-64-rootfs.tar.gz -o /tmp/rootfs.tar.gz
           mkdir -p /tmp/owrt && sudo tar xzf /tmp/rootfs.tar.gz -C /tmp/owrt --exclude='dev/*'
           mkdir -p /tmp/owrt/tmp /tmp/owrt/dev /tmp/owrt/var/lock
-          cp /tmp/pkg/pslinkb-*-x86_64-opkg.ipk /tmp/owrt/tmp/
-          sudo chroot /tmp/owrt /bin/opkg install /tmp/pslinkb-*.ipk --force-overwrite
+          ls -la /tmp/pkg/
+          cp /tmp/pkg/pslinkb-*-x86_64-opkg.ipk /tmp/owrt/tmp/test.ipk
+          sudo chroot /tmp/owrt /bin/opkg install /tmp/test.ipk --force-overwrite
           sudo chroot /tmp/owrt /usr/bin/pslinkb --version
 
   verify-opkg-aarch64:
