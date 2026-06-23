@@ -27,6 +27,7 @@ jobs:
     env:
       V: ${{ inputs.version }}
     steps:
+      - uses: actions/checkout@v4
       - name: Download build artifact
         uses: actions/download-artifact@v4
         with:
@@ -71,24 +72,33 @@ jobs:
           echo "--- Packaging linux-x86_64 ---"
 
           # openwrt.tar.gz
-          rm -rf /tmp/pkg && mkdir -p /tmp/pkg/usr/bin
+          CFG_DIR="$GITHUB_WORKSPACE/openwrt"
+          rm -rf /tmp/pkg && mkdir -p /tmp/pkg/usr/bin /tmp/pkg/etc/config /tmp/pkg/etc/init.d
           cp "$OWRT" /tmp/pkg/usr/bin/pslinkb && chmod +x /tmp/pkg/usr/bin/pslinkb
           [ -n "$STREAM" ] && cp "$STREAM" /tmp/pkg/usr/bin/pslinkb-stream && chmod +x /tmp/pkg/usr/bin/pslinkb-stream
-          tar czf "${OUT}/pslinkb-${V}-${arch}-openwrt.tar.gz" -C /tmp/pkg usr/
+          cp "$CFG_DIR/etc/config/pslinkb" /tmp/pkg/etc/config/
+          cp "$CFG_DIR/etc/init.d/pslinkb" /tmp/pkg/etc/init.d/ && chmod +x /tmp/pkg/etc/init.d/pslinkb
+          tar czf "${OUT}/pslinkb-${V}-${arch}-openwrt.tar.gz" -C /tmp/pkg usr/ etc/
 
           # openwrt.apk
-          rm -rf /tmp/pk-apk && mkdir -p /tmp/pk-apk/usr/bin
+          CFG_DIR="$GITHUB_WORKSPACE/openwrt"
+          rm -rf /tmp/pk-apk && mkdir -p /tmp/pk-apk/usr/bin /tmp/pk-apk/etc/config /tmp/pk-apk/etc/init.d
           cp "$OWRT" /tmp/pk-apk/usr/bin/pslinkb && chmod +x /tmp/pk-apk/usr/bin/pslinkb
           [ -n "$STREAM" ] && cp "$STREAM" /tmp/pk-apk/usr/bin/pslinkb-stream && chmod +x /tmp/pk-apk/usr/bin/pslinkb-stream
+          cp "$CFG_DIR/etc/config/pslinkb" /tmp/pk-apk/etc/config/
+          cp "$CFG_DIR/etc/init.d/pslinkb" /tmp/pk-apk/etc/init.d/ && chmod +x /tmp/pk-apk/etc/init.d/pslinkb
           /usr/local/bin/owrt-apk mkpkg \
             --info "name:pslinkb" --info "version:${V}-r0" --info "arch:${arch}" \
             --info "depends:libc,librt,libpthread" \
             --files /tmp/pk-apk --output "${OUT}/pslinkb-${V}-${arch}-openwrt.apk"
 
           # openwrt.ipk
-          rm -rf /tmp/ipk && mkdir -p /tmp/ipk/usr/bin /tmp/ipk/CONTROL
+          CFG_DIR="$GITHUB_WORKSPACE/openwrt"
+          rm -rf /tmp/ipk && mkdir -p /tmp/ipk/usr/bin /tmp/ipk/etc/config /tmp/ipk/etc/init.d /tmp/ipk/CONTROL
           cp "$OWRT" /tmp/ipk/usr/bin/pslinkb && chmod +x /tmp/ipk/usr/bin/pslinkb
           [ -n "$STREAM" ] && cp "$STREAM" /tmp/ipk/usr/bin/pslinkb-stream && chmod +x /tmp/ipk/usr/bin/pslinkb-stream
+          cp "$CFG_DIR/etc/config/pslinkb" /tmp/ipk/etc/config/
+          cp "$CFG_DIR/etc/init.d/pslinkb" /tmp/ipk/etc/init.d/ && chmod +x /tmp/ipk/etc/init.d/pslinkb
           printf 'Package: pslinkb\nVersion: %s-r0\nArchitecture: %s\nDepends: libc,libpthread\n' "$V" "$ARCH_IPK" > /tmp/ipk/CONTROL/control
           tar czf /tmp/control.tar.gz -C /tmp/ipk/CONTROL .
           tar czf /tmp/data.tar.gz -C /tmp/ipk usr/
@@ -164,6 +174,7 @@ jobs:
     env:
       V: ${{ inputs.version }}
     steps:
+      - uses: actions/checkout@v4
       - name: Download build artifact (aarch64)
         uses: actions/download-artifact@v4
         with:
@@ -208,24 +219,33 @@ jobs:
           echo "--- Packaging linux-aarch64 ---"
 
           # openwrt.tar.gz
-          rm -rf /tmp/pkg && mkdir -p /tmp/pkg/usr/bin
+          CFG_DIR="$GITHUB_WORKSPACE/openwrt"
+          rm -rf /tmp/pkg && mkdir -p /tmp/pkg/usr/bin /tmp/pkg/etc/config /tmp/pkg/etc/init.d
           cp "$OWRT" /tmp/pkg/usr/bin/pslinkb && chmod +x /tmp/pkg/usr/bin/pslinkb
           [ -n "$STREAM" ] && cp "$STREAM" /tmp/pkg/usr/bin/pslinkb-stream && chmod +x /tmp/pkg/usr/bin/pslinkb-stream
-          tar czf "${OUT}/pslinkb-${V}-${arch}-openwrt.tar.gz" -C /tmp/pkg usr/
+          cp "$CFG_DIR/etc/config/pslinkb" /tmp/pkg/etc/config/
+          cp "$CFG_DIR/etc/init.d/pslinkb" /tmp/pkg/etc/init.d/ && chmod +x /tmp/pkg/etc/init.d/pslinkb
+          tar czf "${OUT}/pslinkb-${V}-${arch}-openwrt.tar.gz" -C /tmp/pkg usr/ etc/
 
           # openwrt.apk
-          rm -rf /tmp/pk-apk && mkdir -p /tmp/pk-apk/usr/bin
+          CFG_DIR="$GITHUB_WORKSPACE/openwrt"
+          rm -rf /tmp/pk-apk && mkdir -p /tmp/pk-apk/usr/bin /tmp/pk-apk/etc/config /tmp/pk-apk/etc/init.d
           cp "$OWRT" /tmp/pk-apk/usr/bin/pslinkb && chmod +x /tmp/pk-apk/usr/bin/pslinkb
           [ -n "$STREAM" ] && cp "$STREAM" /tmp/pk-apk/usr/bin/pslinkb-stream && chmod +x /tmp/pk-apk/usr/bin/pslinkb-stream
+          cp "$CFG_DIR/etc/config/pslinkb" /tmp/pk-apk/etc/config/
+          cp "$CFG_DIR/etc/init.d/pslinkb" /tmp/pk-apk/etc/init.d/ && chmod +x /tmp/pk-apk/etc/init.d/pslinkb
           /usr/local/bin/owrt-apk mkpkg \
             --info "name:pslinkb" --info "version:${V}-r0" --info "arch:${arch}" \
             --info "depends:libc,librt,libpthread" \
             --files /tmp/pk-apk --output "${OUT}/pslinkb-${V}-${arch}-openwrt.apk"
 
           # openwrt.ipk
-          rm -rf /tmp/ipk && mkdir -p /tmp/ipk/usr/bin /tmp/ipk/CONTROL
+          CFG_DIR="$GITHUB_WORKSPACE/openwrt"
+          rm -rf /tmp/ipk && mkdir -p /tmp/ipk/usr/bin /tmp/ipk/etc/config /tmp/ipk/etc/init.d /tmp/ipk/CONTROL
           cp "$OWRT" /tmp/ipk/usr/bin/pslinkb && chmod +x /tmp/ipk/usr/bin/pslinkb
           [ -n "$STREAM" ] && cp "$STREAM" /tmp/ipk/usr/bin/pslinkb-stream && chmod +x /tmp/ipk/usr/bin/pslinkb-stream
+          cp "$CFG_DIR/etc/config/pslinkb" /tmp/ipk/etc/config/
+          cp "$CFG_DIR/etc/init.d/pslinkb" /tmp/ipk/etc/init.d/ && chmod +x /tmp/ipk/etc/init.d/pslinkb
           printf 'Package: pslinkb\nVersion: %s-r0\nArchitecture: %s\nDepends: libc,libpthread\n' "$V" "$ARCH_IPK" > /tmp/ipk/CONTROL/control
           tar czf /tmp/control.tar.gz -C /tmp/ipk/CONTROL .
           tar czf /tmp/data.tar.gz -C /tmp/ipk usr/
