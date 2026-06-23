@@ -138,3 +138,5 @@ jobs:
             --repo ${{ github.repository }} \
             --title "v$V" \
             --notes "pslinkb v$V — auto-built and verified by CI"
+        env:
+          GH_TOKEN: ${{ github.token }}
