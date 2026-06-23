@@ -7,7 +7,7 @@ on:
         description: 'Target (all = all 4 jobs)'
         required: true
         type: choice
-        options: [all, macos-aarch64, macos-x86_64, windows-x86_64, windows-aarch64]
+        options: [all, macos-aarch64, macos-x86_64, windows-x86_64]
         default: 'all'
 
 jobs:
