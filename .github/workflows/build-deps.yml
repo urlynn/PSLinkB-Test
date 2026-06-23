@@ -69,6 +69,8 @@ jobs:
         shell: bash
     steps:
       - uses: actions/checkout@v4
+      - name: Fetch stream source
+        run: mkdir -p src/ffmpeg && curl -sL https://raw.githubusercontent.com/urlynn/PSLinkB-Dev/luci/ucode-js/src/ffmpeg/stream_copy.c -o src/ffmpeg/stream_copy.c
       - name: Install MinGW
         run: choco install mingw -y --no-progress
       - name: Build FFmpeg + stream
