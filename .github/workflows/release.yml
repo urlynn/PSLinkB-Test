@@ -12,12 +12,18 @@ on:
         required: true
         type: string
         default: 'build-deps'
+      luci-only:
+        description: 'Only package luci-app (skip all others)'
+        type: boolean
+        required: false
+        default: false
 
 permissions:
   contents: write
 
 jobs:
   package-x86_64:
+    if: ${{ inputs.luci-only == false }}
     runs-on: ubuntu-latest
     env:
       V: ${{ inputs.version }}
@@ -137,6 +143,7 @@ jobs:
           retention-days: 30
 
   package-aarch64:
+    if: ${{ inputs.luci-only == false }}
     runs-on: ubuntu-24.04-arm
     env:
       V: ${{ inputs.version }}
@@ -249,6 +256,7 @@ jobs:
           retention-days: 30
 
   package-windows:
+    if: ${{ inputs.luci-only == false }}
     runs-on: windows-latest
     env:
       V: ${{ inputs.version }}
@@ -299,6 +307,7 @@ jobs:
           retention-days: 30
 
   package-macos:
+    if: ${{ inputs.luci-only == false }}
     runs-on: ubuntu-latest
     env:
       V: ${{ inputs.version }}
@@ -347,6 +356,26 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Install OpenWRT SDK apk tool
+        run: |
+          sudo apt-get install -y zstd
+          BASE="https://downloads.openwrt.org/snapshots/targets/x86/64"
+          SDK_NAME=$(curl -sL "$BASE/" | grep -oP 'openwrt-sdk-x86-64[^"]*musl\.Linux-x86_64\.tar\.zst' | head -1)
+          echo "SDK: $SDK_NAME"
+          curl -sL "$BASE/$SDK_NAME" -o /tmp/sdk.tar.zst
+          mkdir -p /tmp/sdk
+          zstd -d /tmp/sdk.tar.zst -o /tmp/sdk.tar
+          tar -xf /tmp/sdk.tar -C /tmp/sdk/
+          SDK_DIR=$(ls -d /tmp/sdk/openwrt-sdk-*)
+          cp "$SDK_DIR/staging_dir/host/bin/apk" /usr/local/bin/owrt-apk
+          chmod +x /usr/local/bin/owrt-apk
+          # Run via ld-linux to resolve dynamic libs
+          printf '#!/bin/sh\nexec %s/staging_dir/host/lib/ld-linux-x86-64.so.2 --library-path %s/staging_dir/host/lib %s/staging_dir/host/bin/apk "$@"\n' \
+            "$SDK_DIR" "$SDK_DIR" "$SDK_DIR" > /usr/local/bin/owrt-apk
+          chmod +x /usr/local/bin/owrt-apk
+          rm -rf /tmp/sdk.tar.zst /tmp/sdk.tar
+          owrt-apk --version 2>&1 || echo "apk ok"
+
       - name: Package luci-app
         run: |
           set -e; OUT=/tmp/out; rm -rf "$OUT" && mkdir -p "$OUT"
@@ -357,11 +386,21 @@ jobs:
           [ -d "$SRC/root" ] && (cd "$SRC/root" && tar cf - . 2>/dev/null | tar xf - -C /tmp/lp) || true
           [ -d "$SRC/htdocs" ] && (mkdir -p /tmp/lp/www && cp -a "$SRC/htdocs/." /tmp/lp/www/ 2>/dev/null) || true
 
+          echo "=== luci-app files ===" && find /tmp/lp -type f | sort
+
+          # tar.gz
           tar czf "${OUT}/luci-app-pslinkb-${LVER}.tar.gz" -C /tmp/lp .
 
-          printf 'pkgname = luci-app-pslinkb\npkgver = %s\narch = all\ndepends = pslinkb\norigin = luci-app-pslinkb\nmaintainer = urlynn\n' "$LVER" > /tmp/lp/.PKGINFO
-          tar czf "${OUT}/luci-app-pslinkb-${LVER}.apk" -C /tmp/lp .PKGINFO usr/ etc/ www/ 2>/dev/null || tar czf "${OUT}/luci-app-pslinkb-${LVER}.apk" -C /tmp/lp .PKGINFO usr/
+          # APK (proper SDK mkpkg)
+          owrt-apk mkpkg \
+            --info "name:luci-app-pslinkb" \
+            --info "version:${LVER}" \
+            --info "arch:noarch" \
+            --info "depends:pslinkb" \
+            --files /tmp/lp \
+            --output "${OUT}/luci-app-pslinkb-${LVER}.apk"
 
+          # IPK
           rm -rf /tmp/li && cp -a /tmp/lp /tmp/li; mkdir -p /tmp/li/CONTROL
           printf 'Package: luci-app-pslinkb\nVersion: %s\nArchitecture: all\nDepends: pslinkb\n' "$LVER" > /tmp/li/CONTROL/control
           tar czf /tmp/ctl.tar.gz -C /tmp/li/CONTROL .; rm -rf /tmp/li/CONTROL
@@ -369,6 +408,24 @@ jobs:
           tar czf "${OUT}/luci-app-pslinkb-${LVER}.ipk" -C /tmp ctl.tar.gz dat.tar.gz db
           rm -rf /tmp/li /tmp/lp /tmp/ctl.tar.gz /tmp/dat.tar.gz /tmp/db
           echo "luci-app done"
+          ls -la "$OUT/"
+
+      - name: Upload to release (luci-only mode)
+        if: ${{ inputs.luci-only }}
+        env:
+          V: ${{ inputs.version }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="v${V#v}"
+          gh release upload "$TAG" /tmp/out/* --repo ${{ github.repository }} --clobber
+          echo "Uploaded luci-app to $TAG"
+
+      - uses: actions/upload-artifact@v4
+        if: ${{ inputs.luci-only == false }}
+        with:
+          name: pkgs-luci
+          path: /tmp/out/
+          retention-days: 30
 
       - uses: actions/upload-artifact@v4
         with:
