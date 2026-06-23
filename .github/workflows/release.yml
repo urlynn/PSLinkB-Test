@@ -83,7 +83,6 @@ jobs:
       - uses: dtolnay/rust-toolchain@v1
         with:
           toolchain: stable
-        with:
           targets: x86_64-apple-darwin
       - run: |
           cargo build --release --target x86_64-apple-darwin --features cli,channel-broadcast,ffi-ffmpeg,dns-redirect
@@ -100,7 +99,6 @@ jobs:
       - uses: dtolnay/rust-toolchain@v1
         with:
           toolchain: stable
-        with:
           targets: x86_64-pc-windows-gnu
       - run: |
           cargo build --release --target x86_64-pc-windows-gnu --features cli,channel-broadcast,external-ffmpeg,dns-redirect
