@@ -87,3 +87,42 @@ jobs:
           cp /tmp/out/pslinkb-stream-${{ matrix.arch }} /tmp/bundle/pslinkb-stream
           cd /tmp/bundle && tar czf /tmp/pslinkb-${{ matrix.arch }}-bundle.tar.gz pslinkb pslinkb-stream
           gh release upload ${{ github.ref_name }} /tmp/pslinkb-${{ matrix.arch }}-bundle.tar.gz --repo ${{ github.repository }} --clobber
+
+  # ── Stage 2: 验证安装 + 运行 ──────────────
+  verify-opkg:
+    needs: package
+    strategy:
+      matrix:
+        target:
+          - arch: x86_64
+            rootfs: https://downloads.openwrt.org/releases/24.10.4/targets/x86/64/openwrt-24.10.4-x86-64-rootfs.tar.gz
+          - arch: aarch64
+            rootfs: https://downloads.openwrt.org/releases/24.10.4/targets/armsr/armv8/openwrt-24.10.4-armsr-armv8-rootfs.tar.gz
+    runs-on: ${{ startsWith(matrix.target.arch, 'aarch') && 'ubuntu-24.04-arm' || 'ubuntu-latest' }}
+    steps:
+      - run: |
+          curl -sL "${{ matrix.target.rootfs }}" -o /tmp/rootfs.tar.gz
+          mkdir -p /tmp/owrt && sudo tar xzf /tmp/rootfs.tar.gz -C /tmp/owrt --exclude='dev/*'
+          mkdir -p /tmp/owrt/tmp /tmp/owrt/dev /tmp/owrt/var/lock
+          gh release download ${{ github.ref_name }} --repo ${{ github.repository }} -p "${{ matrix.target.arch }}-opkg.ipk" -D /tmp/owrt/tmp/ --clobber
+          sudo chroot /tmp/owrt /bin/opkg install /tmp/pslinkb-${{ matrix.target.arch }}-opkg.ipk --force-overwrite
+          sudo chroot /tmp/owrt /usr/bin/pslinkb --version
+
+  verify-apk:
+    needs: package
+    strategy:
+      matrix:
+        target:
+          - arch: x86_64
+            rootfs: https://downloads.openwrt.org/snapshots/targets/x86/64/openwrt-x86-64-rootfs.tar.gz
+          - arch: aarch64
+            rootfs: https://downloads.openwrt.org/snapshots/targets/armsr/armv8/openwrt-armsr-armv8-rootfs.tar.gz
+    runs-on: ${{ startsWith(matrix.target.arch, 'aarch') && 'ubuntu-24.04-arm' || 'ubuntu-latest' }}
+    steps:
+      - run: |
+          curl -sL "${{ matrix.target.rootfs }}" -o /tmp/rootfs.tar.gz
+          mkdir -p /tmp/owrt && sudo tar xzf /tmp/rootfs.tar.gz -C /tmp/owrt --exclude='dev/*'
+          mkdir -p /tmp/owrt/tmp /tmp/owrt/dev
+          gh release download ${{ github.ref_name }} --repo ${{ github.repository }} -p "${{ matrix.target.arch }}-openwrt.tar.gz" -D /tmp/owrt/tmp/ --clobber
+          sudo chroot /tmp/owrt /usr/bin/apk add --allow-untrusted /tmp/pslinkb-${{ matrix.target.arch }}-openwrt.tar.gz
+          sudo chroot /tmp/owrt /usr/bin/pslinkb --version
