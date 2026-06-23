@@ -22,7 +22,6 @@ on:
 
 jobs:
   macos-aarch64:
-    if: ${{ github.event.inputs.platform == 'all' || github.event.inputs.platform == 'macos-aarch64' }}
     if: ${{ inputs.macos-arm64 }}
     runs-on: macos-26
     steps:
