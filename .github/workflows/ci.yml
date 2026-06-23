@@ -53,21 +53,6 @@ jobs:
           cd /tmp && tar czf /tmp/pslinkb-${{ matrix.arch }}-opkg.ipk control.tar.gz data.tar.gz debian-binary
           gh release upload ${{ github.ref_name }} /tmp/pslinkb-${{ matrix.arch }}-opkg.ipk --repo ${{ github.repository }} --clobber
 
-      - name: Package Arch Linux
-        run: |
-          mkdir -p /tmp/arch/usr/bin
-          cp /tmp/out/pslinkb-${{ matrix.arch }}-bundle /tmp/arch/usr/bin/pslinkb
-          cp /tmp/out/pslinkb-stream-${{ matrix.arch }} /tmp/arch/usr/bin/pslinkb-stream
-          VER=$(echo "${{ github.ref_name }}" | sed 's/^v//')
-          cat > /tmp/arch/.PKGINFO <<ARCHEOF
-pkgname = pslinkb
-pkgver = $VER-1
-pkgdesc = PS5 to Bilibili live streaming bridge
-arch = ${{ matrix.arch }}
-ARCHEOF
-          cd /tmp/arch && tar --zstd -cf /tmp/pslinkb-${{ matrix.arch }}-archlinux.pkg.tar.zst .PKGINFO usr/
-          gh release upload ${{ github.ref_name }} /tmp/pslinkb-${{ matrix.arch }}-archlinux.pkg.tar.zst --repo ${{ github.repository }} --clobber
-
       - name: Package tar.gz (portable/bundle)
         run: |
           mkdir -p /tmp/portable
