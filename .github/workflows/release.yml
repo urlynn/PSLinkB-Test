@@ -55,12 +55,11 @@ jobs:
       - name: Build
         run: |
           cargo build --release --target x86_64-pc-windows-gnu --features cli,channel-broadcast,external-ffmpeg,dns-redirect
-          mkdir -Force C:\tmp
-          cp target/x86_64-pc-windows-gnu/release/pslinkb.exe C:\tmp\pslinkb-x86_64-windows.exe
+          cp target/x86_64-pc-windows-gnu/release/pslinkb.exe pslinkb-x86_64-windows.exe
       - uses: actions/upload-artifact@v4
         with:
           name: windows-x86_64
-          path: C:\tmp\pslinkb-x86_64-windows.exe
+          path: pslinkb-x86_64-windows.exe
 
   package:
     needs: [build-linux-x86_64, build-linux-aarch64, build-windows-x86_64]
