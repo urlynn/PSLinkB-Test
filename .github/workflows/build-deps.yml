@@ -87,6 +87,11 @@ jobs:
             mingw-w64-x86_64-gcc
             mingw-w64-x86_64-pkgconf
             mingw-w64-x86_64-nasm
+            diffutils
+            mingw-w64-x86_64-binutils
+            mingw-w64-x86_64-gcc
+            mingw-w64-x86_64-pkgconf
+            mingw-w64-x86_64-nasm
       - name: Build FFmpeg + stream
         shell: msys2 {0}
         run: |
