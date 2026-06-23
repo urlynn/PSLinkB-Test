@@ -116,7 +116,7 @@ jobs:
             -I/tmp/ffbuild/include -L/tmp/ffbuild/lib \
             /tmp/stream_copy.c \
             -lavformat -lavcodec -lavutil \
-            -lbcrypt -lws2_32 \
+            -lwinmm -lole32 -lbcrypt -lws2_32 \
             -o /tmp/ffbuild/bin/pslinkb-stream.exe
       - uses: actions/upload-artifact@v4
         with:
