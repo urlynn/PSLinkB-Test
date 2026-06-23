@@ -48,8 +48,11 @@ jobs:
           curl -sL "$BASE/$SDK" -o /tmp/sdk.tar.zst
           tar --zstd -xf /tmp/sdk.tar.zst -C /tmp/
           DIR=$(ls -d /tmp/openwrt-sdk-*)
-          ln -sf "$DIR/staging_dir/host/bin/apk" /usr/local/bin/owrt-apk
-          echo "$DIR/staging_dir/host/lib" > /etc/ld.so.conf.d/owrt.conf && ldconfig
+          cat > /usr/local/bin/owrt-apk << EOF
+#!/bin/sh
+exec $DIR/staging_dir/host/lib/ld-linux-x86-64.so.2 $DIR/staging_dir/host/bin/apk "\$@"
+EOF
+          chmod +x /usr/local/bin/owrt-apk
           rm /tmp/sdk.tar.zst
           owrt-apk --version || echo "apk ok"
 
@@ -169,8 +172,11 @@ jobs:
           curl -sL "$BASE/$SDK" -o /tmp/sdk.tar.zst
           tar --zstd -xf /tmp/sdk.tar.zst -C /tmp/
           DIR=$(ls -d /tmp/openwrt-sdk-*)
-          ln -sf "$DIR/staging_dir/host/bin/apk" /usr/local/bin/owrt-apk
-          echo "$DIR/staging_dir/host/lib" > /etc/ld.so.conf.d/owrt.conf && ldconfig
+          cat > /usr/local/bin/owrt-apk << EOF
+#!/bin/sh
+exec $DIR/staging_dir/host/lib/ld-linux-x86-64.so.2 $DIR/staging_dir/host/bin/apk "\$@"
+EOF
+          chmod +x /usr/local/bin/owrt-apk
           rm /tmp/sdk.tar.zst
           owrt-apk --version || echo "apk ok"
 
@@ -348,8 +354,11 @@ jobs:
           curl -sL "$BASE/$SDK" -o /tmp/sdk.tar.zst
           tar --zstd -xf /tmp/sdk.tar.zst -C /tmp/
           DIR=$(ls -d /tmp/openwrt-sdk-*)
-          ln -sf "$DIR/staging_dir/host/bin/apk" /usr/local/bin/owrt-apk
-          echo "$DIR/staging_dir/host/lib" > /etc/ld.so.conf.d/owrt.conf && ldconfig
+          cat > /usr/local/bin/owrt-apk << EOF
+#!/bin/sh
+exec $DIR/staging_dir/host/lib/ld-linux-x86-64.so.2 $DIR/staging_dir/host/bin/apk "\$@"
+EOF
+          chmod +x /usr/local/bin/owrt-apk
           rm /tmp/sdk.tar.zst
           owrt-apk --version || echo "apk ok"
 
