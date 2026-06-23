@@ -29,7 +29,7 @@ on:
         required: false
         default: true
       deps-tag:
-        description: 'Release tag with pslinkb-build-deps.tar.zst'
+        description: 'Release tag with pslinkb-build-deps.tar.gz'
         type: string
         required: false
         default: 'build-deps'
@@ -98,11 +98,11 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          set -e
           gh release download ${{ inputs.deps-tag }} --repo ${{ github.repository }} \
-            -p 'pslinkb-build-deps.tar.zst' -D /tmp/ --clobber || echo "WARN: no deps"
+            -p 'pslinkb-build-deps.tar.gz' -D /tmp/ --clobber
           mkdir -p /tmp/deps
-          [ -f /tmp/pslinkb-build-deps.tar.zst ] && tar --zstd -xf /tmp/pslinkb-build-deps.tar.zst -C /tmp/deps || true
-          # Extract macOS aarch64 FFmpeg libs
+          tar xzf /tmp/pslinkb-build-deps.tar.gz -C /tmp/deps/
           if [ -d /tmp/deps/ffbuild/aarch64-macos ]; then
             rm -rf ffbuild/macos-aarch64 && mkdir -p ffbuild/macos-aarch64
             cp -a /tmp/deps/ffbuild/aarch64-macos/. ffbuild/macos-aarch64/
@@ -130,11 +130,11 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          set -e
           gh release download ${{ inputs.deps-tag }} --repo ${{ github.repository }} \
-            -p 'pslinkb-build-deps.tar.zst' -D /tmp/ --clobber || echo "WARN: no deps"
+            -p 'pslinkb-build-deps.tar.gz' -D /tmp/ --clobber
           mkdir -p /tmp/deps
-          [ -f /tmp/pslinkb-build-deps.tar.zst ] && tar --zstd -xf /tmp/pslinkb-build-deps.tar.zst -C /tmp/deps || true
-          # Extract macOS x86_64 FFmpeg libs
+          tar xzf /tmp/pslinkb-build-deps.tar.gz -C /tmp/deps/
           if [ -d /tmp/deps/ffbuild/x86_64-macos ]; then
             rm -rf ffbuild/macos-x86_64 && mkdir -p ffbuild/macos-x86_64
             cp -a /tmp/deps/ffbuild/x86_64-macos/. ffbuild/macos-x86_64/

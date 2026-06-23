@@ -39,9 +39,9 @@ jobs:
       - name: Download deps (pslinkb-stream)
         run: |
           gh release download ${{ inputs.deps-tag }} --repo ${{ github.repository }} \
-            -p 'pslinkb-build-deps.tar.zst' -D /tmp/ --clobber || echo "WARN: no deps"
+            -p 'pslinkb-build-deps.tar.gz' -D /tmp/ --clobber || echo "WARN: no deps"
           mkdir -p /tmp/deps
-          [ -f /tmp/pslinkb-build-deps.tar.zst ] && tar --zstd -xf /tmp/pslinkb-build-deps.tar.zst -C /tmp/deps || true
+          [ -f /tmp/pslinkb-build-deps.tar.gz ] && tar xzf /tmp/pslinkb-build-deps.tar.gz -C /tmp/deps || true
 
       - name: Install OpenWRT apk tool (x86_64 native)
         run: |
@@ -186,9 +186,9 @@ jobs:
       - name: Download deps (pslinkb-stream)
         run: |
           gh release download ${{ inputs.deps-tag }} --repo ${{ github.repository }} \
-            -p 'pslinkb-build-deps.tar.zst' -D /tmp/ --clobber || echo "WARN: no deps"
+            -p 'pslinkb-build-deps.tar.gz' -D /tmp/ --clobber || echo "WARN: no deps"
           mkdir -p /tmp/deps
-          [ -f /tmp/pslinkb-build-deps.tar.zst ] && tar --zstd -xf /tmp/pslinkb-build-deps.tar.zst -C /tmp/deps || true
+          [ -f /tmp/pslinkb-build-deps.tar.gz ] && tar xzf /tmp/pslinkb-build-deps.tar.gz -C /tmp/deps || true
 
       - name: Install OpenWRT apk tool (x86_64 + qemu)
         run: |
