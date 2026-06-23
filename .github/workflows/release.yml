@@ -17,39 +17,15 @@ permissions:
   contents: write
 
 jobs:
-  # ═══ Stage 1: 编译 Rust 所有目标 ═══
-
   build-linux-x86_64:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Download deps (stream + ffmpeg libs)
-        run: |
-          gh release download ${{ inputs.deps-tag }} --repo ${{ github.repository }} \
-            -p 'pslinkb-build-deps.tar.zst' -D /tmp/ --clobber 2>/dev/null || true
-          if [ -f /tmp/pslinkb-build-deps.tar.zst ]; then
-            tar --zstd -xf /tmp/pslinkb-build-deps.tar.zst -C /tmp/deps
-            # deps use {arch}-{os} naming: x86_64-linux-musl, aarch64-macos
-            # build.rs expects {os}-{arch}: linux-x86_64, macos-aarch64
-            for d in /tmp/deps/ffbuild/x86_64-linux-musl /tmp/deps/ffbuild/aarch64-linux-musl \
-                     /tmp/deps/ffbuild/aarch64-macos /tmp/deps/ffbuild/x86_64-macos; do
-              [ -d "$d" ] || continue
-              b=$(basename $d)
-              case $b in
-                x86_64-linux-musl)   t=linux-x86_64 ;;
-                aarch64-linux-musl)  t=linux-aarch64 ;;
-                x86_64-macos)        t=macos-x86_64 ;;
-                aarch64-macos)       t=macos-aarch64 ;;
-                *) continue ;;
-              esac
-              mkdir -p ffbuild/$t && cp -r $d/* ffbuild/$t/ && echo "  ffbuild/$t ✓"
-            done
-          fi
       - run: rustup target add x86_64-unknown-linux-musl
       - run: sudo apt-get install -y musl-tools
-      - name: Build openwrt (external-ffmpeg)
+      - name: Build openwrt
         run: cargo build --release --target x86_64-unknown-linux-musl --features openwrt,channel-mpsc,external-ffmpeg && cp target/x86_64-unknown-linux-musl/release/pslinkb /tmp/pslinkb-x86_64-openwrt
-      - name: Build bundle (external-ffmpeg)
+      - name: Build bundle
         run: cargo build --release --target x86_64-unknown-linux-musl --features cli,channel-mpsc,external-ffmpeg,dns-redirect && cp target/x86_64-unknown-linux-musl/release/pslinkb /tmp/pslinkb-x86_64-bundle
       - uses: actions/upload-artifact@v4
         with:
@@ -62,42 +38,14 @@ jobs:
       - uses: actions/checkout@v4
       - run: rustup target add aarch64-unknown-linux-musl
       - run: sudo apt-get install -y musl-tools
-      - run: |
-          cargo build --release --target aarch64-unknown-linux-musl --features openwrt,channel-mpsc,external-ffmpeg
-          cp target/aarch64-unknown-linux-musl/release/pslinkb /tmp/pslinkb-aarch64-openwrt
-          cargo build --release --target aarch64-unknown-linux-musl --features cli,channel-mpsc,external-ffmpeg,dns-redirect
-          cp target/aarch64-unknown-linux-musl/release/pslinkb /tmp/pslinkb-aarch64-bundle
-          cargo build --release --target aarch64-unknown-linux-musl --features cli,channel-mpsc,ffi-ffmpeg,dns-redirect
-          cp target/aarch64-unknown-linux-musl/release/pslinkb /tmp/pslinkb-aarch64-portable
+      - name: Build openwrt
+        run: cargo build --release --target aarch64-unknown-linux-musl --features openwrt,channel-mpsc,external-ffmpeg && cp target/aarch64-unknown-linux-musl/release/pslinkb /tmp/pslinkb-aarch64-openwrt
+      - name: Build bundle
+        run: cargo build --release --target aarch64-unknown-linux-musl --features cli,channel-mpsc,external-ffmpeg,dns-redirect && cp target/aarch64-unknown-linux-musl/release/pslinkb /tmp/pslinkb-aarch64-bundle
       - uses: actions/upload-artifact@v4
         with:
           name: linux-aarch64
           path: /tmp/pslinkb-aarch64-*
-
-  build-macos-aarch64:
-    runs-on: macos-26
-    steps:
-      - uses: actions/checkout@v4
-      - run: |
-          cargo build --release --features cli,channel-broadcast,ffi-ffmpeg,dns-redirect
-          cp target/release/pslinkb /tmp/pslinkb-aarch64-macos
-      - uses: actions/upload-artifact@v4
-        with:
-          name: macos-aarch64
-          path: /tmp/pslinkb-aarch64-macos
-
-  build-macos-x86_64:
-    runs-on: macos-26-intel
-    steps:
-      - uses: actions/checkout@v4
-      - run: rustup target add x86_64-apple-darwin
-      - run: |
-          cargo build --release --target x86_64-apple-darwin --features cli,channel-broadcast,ffi-ffmpeg,dns-redirect
-          cp target/x86_64-apple-darwin/release/pslinkb /tmp/pslinkb-x86_64-macos
-      - uses: actions/upload-artifact@v4
-        with:
-          name: macos-x86_64
-          path: /tmp/pslinkb-x86_64-macos
 
   build-windows-x86_64:
     runs-on: windows-latest
@@ -112,40 +60,30 @@ jobs:
           name: windows-x86_64
           path: /tmp/pslinkb-x86_64-windows.exe
 
-  # ═══ Stage 2: 打包所有格式 ═══
-
   package:
-    needs: [build-linux-x86_64, build-linux-aarch64, build-macos-aarch64, build-macos-x86_64, build-windows-x86_64]
+    needs: [build-linux-x86_64, build-linux-aarch64, build-windows-x86_64]
     runs-on: ubuntu-latest
-    outputs:
-      out-dir: /tmp/out
     steps:
       - uses: actions/download-artifact@v4
         with:
           pattern: '*'
           path: /tmp/bins
           merge-multiple: true
-
       - name: Download deps (stream)
         run: |
           gh release download ${{ inputs.deps-tag }} --repo ${{ github.repository }} \
             -p 'pslinkb-build-deps.tar.zst' -D /tmp/ --clobber || echo "WARN: no deps"
           mkdir -p /tmp/deps
           [ -f /tmp/pslinkb-build-deps.tar.zst ] && tar --zstd -xf /tmp/pslinkb-build-deps.tar.zst -C /tmp/deps || true
-
       - name: Package all
         run: |
           V=${{ inputs.version }}
           rm -rf /tmp/out && mkdir -p /tmp/out
-
           for arch in x86_64 aarch64; do
-            # OpenWRT tar.gz
             mkdir -p /tmp/pkg/usr/bin
             cp /tmp/bins/pslinkb-${arch}-openwrt /tmp/pkg/usr/bin/pslinkb
             [ -f /tmp/deps/stream/${arch}-linux-musl/pslinkb-stream ] && cp /tmp/deps/stream/${arch}-linux-musl/pslinkb-stream /tmp/pkg/usr/bin/ || true
             (cd /tmp/pkg && tar czf /tmp/out/pslinkb-${V}-${arch}-openwrt.tar.gz usr/) && rm -rf /tmp/pkg
-
-            # IPK
             mkdir -p /tmp/ipk/usr/bin /tmp/ipk/CONTROL
             cp /tmp/bins/pslinkb-${arch}-openwrt /tmp/ipk/usr/bin/pslinkb
             [ -f /tmp/deps/stream/${arch}-linux-musl/pslinkb-stream ] && cp /tmp/deps/stream/${arch}-linux-musl/pslinkb-stream /tmp/ipk/usr/bin/ || true
@@ -158,45 +96,27 @@ jobs:
             echo "2.0" > /tmp/db
             (cd /tmp && tar czf /tmp/out/pslinkb-${V}-${arch}-opkg.ipk /tmp/ct.tar.gz /tmp/dt.tar.gz /tmp/db)
             rm -rf /tmp/ipk
-
-            # portable
-            mkdir -p /tmp/port && cp /tmp/bins/pslinkb-${arch}-portable /tmp/port/pslinkb
-            (cd /tmp/port && tar czf /tmp/out/pslinkb-${V}-${arch}-portable.tar.gz pslinkb) && rm -rf /tmp/port
-
-            # bundle
             mkdir -p /tmp/bun && cp /tmp/bins/pslinkb-${arch}-bundle /tmp/bun/pslinkb
             [ -f /tmp/deps/stream/${arch}-linux-musl/pslinkb-stream ] && cp /tmp/deps/stream/${arch}-linux-musl/pslinkb-stream /tmp/bun/ || true
             (cd /tmp/bun && tar czf /tmp/out/pslinkb-${V}-${arch}-bundle.tar.gz .) && rm -rf /tmp/bun
           done
-
-          # macOS
-          cp /tmp/bins/pslinkb-aarch64-macos /tmp/out/pslinkb-${V}-aarch64-macos
-          cp /tmp/bins/pslinkb-x86_64-macos /tmp/out/pslinkb-${V}-x86_64-macos
-
-          # Windows zip
           mkdir -p /tmp/win
           cp /tmp/bins/pslinkb-x86_64-windows.exe /tmp/win/pslinkb.exe
           [ -f /tmp/deps/stream/x86_64-windows/pslinkb-stream.exe ] && cp /tmp/deps/stream/x86_64-windows/pslinkb-stream.exe /tmp/win/ || true
-          (cd /tmp/win && zip -qr /tmp/out/pslinkb-${V}-x86_64-windows.zip .) && rm -rf /tmp/win
-
+          (cd /tmp/win && zip -qr /tmp/out/pslinkb-${V}-x86_64-windows.zip .)
           ls -la /tmp/out/
           echo "PACKAGED: $(ls /tmp/out/ | wc -l) files"
-
       - uses: actions/upload-artifact@v4
         with:
           name: packages
           path: /tmp/out/
-
-  # ═══ Stage 3: 验证（全通过才继续）═══
 
   verify-opkg-x86_64:
     needs: package
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4
-        with:
-          name: packages
-          path: /tmp/pkg
+        with: { name: packages, path: /tmp/pkg }
       - run: |
           curl -sL https://downloads.openwrt.org/releases/24.10.4/targets/x86/64/openwrt-24.10.4-x86-64-rootfs.tar.gz -o /tmp/rootfs.tar.gz
           mkdir -p /tmp/owrt && sudo tar xzf /tmp/rootfs.tar.gz -C /tmp/owrt --exclude='dev/*'
@@ -210,9 +130,7 @@ jobs:
     runs-on: ubuntu-24.04-arm
     steps:
       - uses: actions/download-artifact@v4
-        with:
-          name: packages
-          path: /tmp/pkg
+        with: { name: packages, path: /tmp/pkg }
       - run: |
           curl -sL https://downloads.openwrt.org/releases/24.10.4/targets/armsr/armv8/openwrt-24.10.4-armsr-armv8-rootfs.tar.gz -o /tmp/rootfs.tar.gz
           mkdir -p /tmp/owrt && sudo tar xzf /tmp/rootfs.tar.gz -C /tmp/owrt --exclude='dev/*'
@@ -221,40 +139,22 @@ jobs:
           sudo chroot /tmp/owrt /bin/opkg install /tmp/pslinkb-*.ipk --force-overwrite
           sudo chroot /tmp/owrt /usr/bin/pslinkb --version
 
-  verify-macos:
-    needs: package
-    runs-on: macos-26
-    steps:
-      - uses: actions/download-artifact@v4
-        with:
-          name: packages
-          path: /tmp/pkg
-      - run: |
-          chmod +x /tmp/pkg/pslinkb-*-aarch64-macos
-          /tmp/pkg/pslinkb-*-aarch64-macos --version
-
   verify-windows:
     needs: package
     runs-on: windows-latest
     steps:
       - uses: actions/download-artifact@v4
-        with:
-          name: packages
-          path: /tmp/pkg
+        with: { name: packages, path: /tmp/pkg }
       - run: |
           unzip -q /tmp/pkg/pslinkb-*-windows.zip -d /tmp/win
           /tmp/win/pslinkb.exe --version
 
-  # ═══ Stage 4: 上传到 Release（仅验证通过）═══
-
   release:
-    needs: [verify-opkg-x86_64, verify-opkg-aarch64, verify-macos, verify-windows]
+    needs: [verify-opkg-x86_64, verify-opkg-aarch64, verify-windows]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4
-        with:
-          name: packages
-          path: /tmp/pkg
+        with: { name: packages, path: /tmp/pkg }
       - name: Create Release and Upload
         run: |
           V=${{ inputs.version }}
