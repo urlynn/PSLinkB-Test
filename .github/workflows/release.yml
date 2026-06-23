@@ -117,10 +117,10 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: packages
-          path: /tmp/pkg
+          path: pkg
       - run: |
-          unzip -q /tmp/pkg/pslinkb-*-windows.zip -d /tmp/win
-          /tmp/win/pslinkb.exe --version
+          unzip -q pkg/pslinkb-*-windows.zip -d win
+          win/pslinkb.exe --version
 
   release:
     needs: [verify-opkg-x86_64, verify-opkg-aarch64, verify-windows]
