@@ -61,6 +61,8 @@ jobs:
           cp -a /tmp/ffmpeg-build/. ffbuild/linux-x86_64/
           echo "=== FFmpeg output ===" && ls -la ffbuild/linux-x86_64/lib/libav*.a
       - name: Build portable (ffi)
+        env:
+          CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER: musl-gcc
         run: cargo build --release --target x86_64-unknown-linux-musl --features cli,channel-mpsc,ffi-ffmpeg,dns-redirect && cp target/x86_64-unknown-linux-musl/release/pslinkb /tmp/pslinkb-x86_64-portable
       - uses: actions/upload-artifact@v4
         with:
@@ -99,6 +101,8 @@ jobs:
           cp -a /tmp/ffmpeg-build/. ffbuild/linux-aarch64/
           echo "=== FFmpeg output ===" && ls -la ffbuild/linux-aarch64/lib/libav*.a
       - name: Build portable (ffi)
+        env:
+          CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_LINKER: musl-gcc
         run: cargo build --release --target aarch64-unknown-linux-musl --features cli,channel-mpsc,ffi-ffmpeg,dns-redirect && cp target/aarch64-unknown-linux-musl/release/pslinkb /tmp/pslinkb-aarch64-portable
       - uses: actions/upload-artifact@v4
         with:
