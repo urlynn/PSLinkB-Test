@@ -55,8 +55,8 @@ jobs:
             echo "Architecture: $A" >> /tmp/ipk/CONTROL/control
             echo "Depends: libc,libpthread" >> /tmp/ipk/CONTROL/control
             (cd /tmp/ipk && tar czf /tmp/ct.tar.gz -C CONTROL . && tar czf /tmp/dt.tar.gz usr)
-            echo "2.0" > /tmp/db
-            (cd /tmp && tar czf /tmp/out/pslinkb-${V}-${arch}-opkg.ipk ct.tar.gz dt.tar.gz db)
+            echo "2.0" > /tmp/debian-binary
+            (cd /tmp && tar czf /tmp/out/pslinkb-${V}-${arch}-opkg.ipk debian-binary ct.tar.gz dt.tar.gz)
             rm -rf /tmp/ipk
             mkdir -p /tmp/bun && cp /tmp/bins/pslinkb-${arch}-bundle /tmp/bun/pslinkb
             [ -f /tmp/deps/stream/${arch}-linux-musl/pslinkb-stream ] && cp /tmp/deps/stream/${arch}-linux-musl/pslinkb-stream /tmp/bun/ || true
