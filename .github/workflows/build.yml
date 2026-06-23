@@ -4,17 +4,27 @@ on:
   workflow_dispatch:
     inputs:
       linux-x86_64:
-        description: 'Build linux-x86_64'
+        description: 'Build linux-x86_64 (openwrt + bundle + portable)'
         type: boolean
         required: false
         default: true
       linux-aarch64:
-        description: 'Build linux-aarch64'
+        description: 'Build linux-aarch64 (openwrt + bundle + portable)'
         type: boolean
         required: false
         default: true
       windows-x86_64:
         description: 'Build windows-x86_64'
+        type: boolean
+        required: false
+        default: true
+      macos-aarch64:
+        description: 'Build macos-aarch64'
+        type: boolean
+        required: false
+        default: true
+      macos-x86_64:
+        description: 'Build macos-x86_64'
         type: boolean
         required: false
         default: true
@@ -31,6 +41,24 @@ jobs:
         run: cargo build --release --target x86_64-unknown-linux-musl --features openwrt,channel-mpsc,external-ffmpeg && cp target/x86_64-unknown-linux-musl/release/pslinkb /tmp/pslinkb-x86_64-openwrt
       - name: Build bundle
         run: cargo build --release --target x86_64-unknown-linux-musl --features cli,channel-mpsc,external-ffmpeg,dns-redirect && cp target/x86_64-unknown-linux-musl/release/pslinkb /tmp/pslinkb-x86_64-bundle
+      - name: Build musl FFmpeg (for portable)
+        run: |
+          git clone --branch n8.0 --depth 1 https://github.com/FFmpeg/FFmpeg.git /tmp/ffmpeg-src
+          cd /tmp/ffmpeg-src
+          CC=musl-gcc ./configure \
+            --prefix=/tmp/ffmpeg-build \
+            --target-os=linux --arch=x86_64 \
+            --enable-static --disable-shared \
+            --disable-everything --enable-small \
+            --enable-ffmpeg \
+            --enable-protocol=tcp,rtmp --enable-demuxer=flv --enable-muxer=flv --enable-parser=h264 --enable-network \
+            --disable-filters --disable-swscale --disable-bsfs --disable-doc --disable-debug --disable-ffplay --disable-ffprobe \
+            --disable-iconv --disable-lzma --disable-bzlib --disable-zlib --disable-runtime-cpudetect
+          make -j$(nproc) && make install
+          mkdir -p ffbuild/linux-x86_64
+          cp -r /tmp/ffmpeg-build/* ffbuild/linux-x86_64/
+      - name: Build portable (ffi)
+        run: cargo build --release --target x86_64-unknown-linux-musl --features cli,channel-mpsc,ffi-ffmpeg,dns-redirect && cp target/x86_64-unknown-linux-musl/release/pslinkb /tmp/pslinkb-x86_64-portable
       - uses: actions/upload-artifact@v4
         with:
           name: linux-x86_64
@@ -48,6 +76,24 @@ jobs:
         run: cargo build --release --target aarch64-unknown-linux-musl --features openwrt,channel-mpsc,external-ffmpeg && cp target/aarch64-unknown-linux-musl/release/pslinkb /tmp/pslinkb-aarch64-openwrt
       - name: Build bundle
         run: cargo build --release --target aarch64-unknown-linux-musl --features cli,channel-mpsc,external-ffmpeg,dns-redirect && cp target/aarch64-unknown-linux-musl/release/pslinkb /tmp/pslinkb-aarch64-bundle
+      - name: Build musl FFmpeg (for portable)
+        run: |
+          git clone --branch n8.0 --depth 1 https://github.com/FFmpeg/FFmpeg.git /tmp/ffmpeg-src
+          cd /tmp/ffmpeg-src
+          CC=musl-gcc ./configure \
+            --prefix=/tmp/ffmpeg-build \
+            --target-os=linux --arch=aarch64 \
+            --enable-static --disable-shared \
+            --disable-everything --enable-small \
+            --enable-ffmpeg \
+            --enable-protocol=tcp,rtmp --enable-demuxer=flv --enable-muxer=flv --enable-parser=h264 --enable-network \
+            --disable-filters --disable-swscale --disable-bsfs --disable-doc --disable-debug --disable-ffplay --disable-ffprobe \
+            --disable-iconv --disable-lzma --disable-bzlib --disable-zlib --disable-runtime-cpudetect
+          make -j$(nproc) && make install
+          mkdir -p ffbuild/linux-aarch64
+          cp -r /tmp/ffmpeg-build/* ffbuild/linux-aarch64/
+      - name: Build portable (ffi)
+        run: cargo build --release --target aarch64-unknown-linux-musl --features cli,channel-mpsc,ffi-ffmpeg,dns-redirect && cp target/aarch64-unknown-linux-musl/release/pslinkb /tmp/pslinkb-aarch64-portable
       - uses: actions/upload-artifact@v4
         with:
           name: linux-aarch64
@@ -68,4 +114,62 @@ jobs:
         with:
           name: windows-x86_64
           path: pslinkb-x86_64-windows.exe
+          retention-days: 30
+
+  build-macos-aarch64:
+    if: ${{ inputs.macos-aarch64 || github.event_name != 'workflow_dispatch' }}
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install deps
+        run: brew install nasm pkg-config
+      - name: Build FFmpeg (macOS aarch64)
+        run: |
+          git clone --branch n8.0 --depth 1 https://github.com/FFmpeg/FFmpeg.git /tmp/ffmpeg
+          cd /tmp/ffmpeg
+          ./configure --prefix=/tmp/ffmpeg-build --cc=clang --target-os=darwin --arch=aarch64 \
+            --enable-static --disable-shared --disable-everything --enable-small \
+            --enable-ffmpeg --enable-protocol=tcp,rtmp --enable-demuxer=flv --enable-muxer=flv --enable-parser=h264 --enable-network \
+            --disable-filters --disable-swscale --disable-bsfs --disable-doc --disable-debug --disable-ffplay --disable-ffprobe \
+            --disable-iconv --disable-lzma --disable-bzlib --disable-zlib --disable-runtime-cpudetect
+          make -j$(sysctl -n hw.ncpu) && make install
+          mkdir -p ffbuild/macos-aarch64
+          cp -r /tmp/ffmpeg-build/* ffbuild/macos-aarch64/
+      - name: Build pslinkb (macOS aarch64)
+        run: |
+          cargo build --release --features "cli,channel-broadcast,ffi-ffmpeg,dns-redirect"
+          cp target/release/pslinkb /tmp/pslinkb-aarch64-macos
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos-aarch64
+          path: /tmp/pslinkb-aarch64-macos
+          retention-days: 30
+
+  build-macos-x86_64:
+    if: ${{ inputs.macos-x86_64 || github.event_name != 'workflow_dispatch' }}
+    runs-on: macos-13
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install deps
+        run: brew install nasm pkg-config
+      - name: Build FFmpeg (macOS x86_64)
+        run: |
+          git clone --branch n8.0 --depth 1 https://github.com/FFmpeg/FFmpeg.git /tmp/ffmpeg
+          cd /tmp/ffmpeg
+          ./configure --prefix=/tmp/ffmpeg-build --cc=clang --target-os=darwin --arch=x86_64 \
+            --enable-static --disable-shared --disable-everything --enable-small \
+            --enable-ffmpeg --enable-protocol=tcp,rtmp --enable-demuxer=flv --enable-muxer=flv --enable-parser=h264 --enable-network \
+            --disable-filters --disable-swscale --disable-bsfs --disable-doc --disable-debug --disable-ffplay --disable-ffprobe \
+            --disable-iconv --disable-lzma --disable-bzlib --disable-zlib --disable-runtime-cpudetect
+          make -j$(sysctl -n hw.ncpu) && make install
+          mkdir -p ffbuild/macos-x86_64
+          cp -r /tmp/ffmpeg-build/* ffbuild/macos-x86_64/
+      - name: Build pslinkb (macOS x86_64)
+        run: |
+          cargo build --release --features "cli,channel-broadcast,ffi-ffmpeg,dns-redirect"
+          cp target/release/pslinkb /tmp/pslinkb-x86_64-macos
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos-x86_64
+          path: /tmp/pslinkb-x86_64-macos
           retention-days: 30

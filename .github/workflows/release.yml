@@ -1,4 +1,4 @@
-name: Release
+name: Package, Verify & Release
 
 on:
   workflow_dispatch:
@@ -12,7 +12,7 @@ on:
         required: true
         type: string
       deps-tag:
-        description: 'Tag with pslinkb-build-deps.tar.zst'
+        description: 'Tag with pslinkb-stream binaries'
         required: true
         type: string
         default: 'build-deps'
@@ -21,122 +21,478 @@ permissions:
   contents: write
 
 jobs:
-  package:
+  # ── x86_64: 打包 → 验证 IPK/APK → 上传 ──
+  package-x86_64:
     runs-on: ubuntu-latest
+    env:
+      V: ${{ inputs.version }}
     steps:
-      - uses: actions/download-artifact@v4
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
         with:
-          pattern: '*'
+          name: linux-x86_64
           path: /tmp/bins
-          merge-multiple: true
           github-token: ${{ secrets.GITHUB_TOKEN }}
           run-id: ${{ inputs.run-id }}
-      - name: Download deps (stream)
+
+      - name: Download deps (pslinkb-stream)
         run: |
           gh release download ${{ inputs.deps-tag }} --repo ${{ github.repository }} \
             -p 'pslinkb-build-deps.tar.zst' -D /tmp/ --clobber || echo "WARN: no deps"
           mkdir -p /tmp/deps
           [ -f /tmp/pslinkb-build-deps.tar.zst ] && tar --zstd -xf /tmp/pslinkb-build-deps.tar.zst -C /tmp/deps || true
-      - name: Package all
-        run: |
-          V=${{ inputs.version }}
-          rm -rf /tmp/out && mkdir -p /tmp/out
-          for arch in x86_64 aarch64; do
-            mkdir -p /tmp/pkg/usr/bin
-            cp /tmp/bins/pslinkb-${arch}-openwrt /tmp/pkg/usr/bin/pslinkb
-            chmod +x /tmp/pkg/usr/bin/pslinkb
-            [ -f /tmp/deps/stream/${arch}-linux-musl/pslinkb-stream ] && cp /tmp/deps/stream/${arch}-linux-musl/pslinkb-stream /tmp/pkg/usr/bin/ || true
-            (cd /tmp/pkg && tar czf /tmp/out/pslinkb-${V}-${arch}-openwrt.tar.gz usr/) && rm -rf /tmp/pkg
-            mkdir -p /tmp/ipk/usr/bin /tmp/ipk/CONTROL
-            cp /tmp/bins/pslinkb-${arch}-openwrt /tmp/ipk/usr/bin/pslinkb
-            chmod +x /tmp/ipk/usr/bin/pslinkb
-            [ -f /tmp/deps/stream/${arch}-linux-musl/pslinkb-stream ] && cp /tmp/deps/stream/${arch}-linux-musl/pslinkb-stream /tmp/ipk/usr/bin/ || true
-            A=$([ "$arch" = "x86_64" ] && echo "x86_64" || echo "aarch64_generic")
-            echo "Package: pslinkb" > /tmp/ipk/CONTROL/control
-            echo "Version: $V-r0" >> /tmp/ipk/CONTROL/control
-            echo "Architecture: $A" >> /tmp/ipk/CONTROL/control
-            echo "Depends: libc,libpthread" >> /tmp/ipk/CONTROL/control
-            (cd /tmp/ipk && tar czf /tmp/control.tar.gz -C CONTROL . && tar czf /tmp/data.tar.gz usr)
-            echo "2.0" > /tmp/debian-binary
-            (cd /tmp && tar czf /tmp/out/pslinkb-${V}-${arch}-opkg.ipk debian-binary control.tar.gz data.tar.gz)
-            rm -rf /tmp/ipk
-            mkdir -p /tmp/bun && cp /tmp/bins/pslinkb-${arch}-bundle /tmp/bun/pslinkb
-            chmod +x /tmp/bun/pslinkb
-            [ -f /tmp/deps/stream/${arch}-linux-musl/pslinkb-stream ] && cp /tmp/deps/stream/${arch}-linux-musl/pslinkb-stream /tmp/bun/ || true
-            (cd /tmp/bun && tar czf /tmp/out/pslinkb-${V}-${arch}-bundle.tar.gz .) && rm -rf /tmp/bun
-          done
-          mkdir -p /tmp/win
-          cp /tmp/bins/pslinkb-x86_64-windows.exe /tmp/win/pslinkb.exe
-          [ -f /tmp/deps/stream/x86_64-windows/pslinkb-stream.exe ] && cp /tmp/deps/stream/x86_64-windows/pslinkb-stream.exe /tmp/win/ || true
-          (cd /tmp/win && zip -qr /tmp/out/pslinkb-${V}-x86_64-windows.zip .)
-          ls -la /tmp/out/
-          echo "PACKAGED: $(ls /tmp/out/ | wc -l) files"
-      - uses: actions/upload-artifact@v4
-        with:
-          name: packages
-          path: /tmp/out/
-          retention-days: 30
 
-  verify-opkg-x86_64:
-    needs: package
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/download-artifact@v4
-        with:
-          name: packages
-          path: /tmp/pkg
-      - run: |
+      - name: Install OpenWRT apk tool (x86_64 native)
+        run: |
+          sudo apt-get install -y zstd
+          curl -sL "https://downloads.openwrt.org/snapshots/targets/x86/64/openwrt-sdk-x86-64_gcc-14_musl.Linux-x86_64.tar.zst" -o /tmp/sdk.tar.zst
+          zstd -d /tmp/sdk.tar.zst -o /tmp/sdk.tar
+          tar -x --to-stdout --wildcards '*/staging_dir/host/bin/apk' -f /tmp/sdk.tar > /usr/local/bin/owrt-apk 2>/dev/null || \
+            tar -x --to-stdout 'openwrt-sdk-*/staging_dir/host/bin/apk' -f /tmp/sdk.tar > /usr/local/bin/owrt-apk
+          chmod +x /usr/local/bin/owrt-apk
+          rm -f /tmp/sdk.tar.zst /tmp/sdk.tar
+          echo "APK version:" && /usr/local/bin/owrt-apk --version 2>&1 || echo "got binary"
+
+      - name: Package x86_64
+        run: |
+          set -e
+          V="${V#v}"
+          OUT="/tmp/out"
+          rm -rf "$OUT" && mkdir -p "$OUT"
+          arch=x86_64
+          ARCH_IPK=x86_64
+
+          OWRT="/tmp/bins/pslinkb-${arch}-openwrt"
+          BUN="/tmp/bins/pslinkb-${arch}-bundle"
+          PORT="/tmp/bins/pslinkb-${arch}-portable"
+          STREAM="/tmp/deps/stream/${arch}-linux-musl/pslinkb-stream"
+          [ -f "$STREAM" ] || STREAM=""
+
+          echo "--- Packaging linux-x86_64 ---"
+
+          # openwrt.tar.gz
+          rm -rf /tmp/pkg && mkdir -p /tmp/pkg/usr/bin
+          cp "$OWRT" /tmp/pkg/usr/bin/pslinkb && chmod +x /tmp/pkg/usr/bin/pslinkb
+          [ -n "$STREAM" ] && cp "$STREAM" /tmp/pkg/usr/bin/pslinkb-stream && chmod +x /tmp/pkg/usr/bin/pslinkb-stream
+          tar czf "${OUT}/pslinkb-${V}-${arch}-openwrt.tar.gz" -C /tmp/pkg usr/
+
+          # openwrt.apk
+          rm -rf /tmp/pk-apk && mkdir -p /tmp/pk-apk/usr/bin
+          cp "$OWRT" /tmp/pk-apk/usr/bin/pslinkb && chmod +x /tmp/pk-apk/usr/bin/pslinkb
+          [ -n "$STREAM" ] && cp "$STREAM" /tmp/pk-apk/usr/bin/pslinkb-stream && chmod +x /tmp/pk-apk/usr/bin/pslinkb-stream
+          /usr/local/bin/owrt-apk mkpkg \
+            --info "name:pslinkb" --info "version:${V}-r0" --info "arch:${arch}" \
+            --info "depends:libc,librt,libpthread" \
+            --files /tmp/pk-apk --output "${OUT}/pslinkb-${V}-${arch}-openwrt.apk"
+
+          # openwrt.ipk
+          rm -rf /tmp/ipk && mkdir -p /tmp/ipk/usr/bin /tmp/ipk/CONTROL
+          cp "$OWRT" /tmp/ipk/usr/bin/pslinkb && chmod +x /tmp/ipk/usr/bin/pslinkb
+          [ -n "$STREAM" ] && cp "$STREAM" /tmp/ipk/usr/bin/pslinkb-stream && chmod +x /tmp/ipk/usr/bin/pslinkb-stream
+          printf 'Package: pslinkb\nVersion: %s-r0\nArchitecture: %s\nDepends: libc,libpthread\n' "$V" "$ARCH_IPK" > /tmp/ipk/CONTROL/control
+          tar czf /tmp/control.tar.gz -C /tmp/ipk/CONTROL .
+          tar czf /tmp/data.tar.gz -C /tmp/ipk usr/
+          echo "2.0" > /tmp/debian-binary
+          tar czf "${OUT}/pslinkb-${V}-${arch}-openwrt.ipk" -C /tmp control.tar.gz data.tar.gz debian-binary
+          rm -rf /tmp/ipk /tmp/control.tar.gz /tmp/data.tar.gz /tmp/debian-binary
+
+          # bundle.tar.zst
+          rm -rf /tmp/bun && mkdir -p /tmp/bun
+          cp "$BUN" /tmp/bun/pslinkb && chmod +x /tmp/bun/pslinkb
+          [ -n "$STREAM" ] && cp "$STREAM" /tmp/bun/pslinkb-stream && chmod +x /tmp/bun/pslinkb-stream
+          tar --zstd -cf "${OUT}/pslinkb-${V}-${arch}-unknown-linux-musl-bundle.tar.zst" -C /tmp/bun .
+
+          # debian.deb
+          rm -rf /tmp/deb && mkdir -p /tmp/deb/usr/bin /tmp/deb/DEBIAN
+          cp "$BUN" /tmp/deb/usr/bin/pslinkb && chmod +x /tmp/deb/usr/bin/pslinkb
+          [ -n "$STREAM" ] && cp "$STREAM" /tmp/deb/usr/bin/pslinkb-stream && chmod +x /tmp/deb/usr/bin/pslinkb-stream
+          printf 'Package: pslinkb\nVersion: %s\nArchitecture: amd64\nMaintainer: urlynn\nSection: net\nPriority: optional\nDescription: PS5 to Bilibili live streaming bridge\n' "$V" > /tmp/deb/DEBIAN/control
+          tar czf /tmp/control.tar.gz -C /tmp/deb/DEBIAN .
+          tar czf /tmp/data.tar.gz -C /tmp/deb usr/
+          echo "2.0" > /tmp/debian-binary
+          ar r "${OUT}/pslinkb-${V}-${arch}-debian.deb" /tmp/debian-binary /tmp/control.tar.gz /tmp/data.tar.gz
+          rm -rf /tmp/deb /tmp/control.tar.gz /tmp/data.tar.gz /tmp/debian-binary
+
+          # archlinux
+          rm -rf /tmp/arch && mkdir -p /tmp/arch/usr/bin
+          cp "$BUN" /tmp/arch/usr/bin/pslinkb && chmod +x /tmp/arch/usr/bin/pslinkb
+          [ -n "$STREAM" ] && cp "$STREAM" /tmp/arch/usr/bin/pslinkb-stream && chmod +x /tmp/arch/usr/bin/pslinkb-stream
+          printf 'pkgname = pslinkb\npkgver = %s-1\npkgdesc = PS5 to Bilibili live streaming bridge\narch = %s\n' "$V" "$arch" > /tmp/arch/.PKGINFO
+          tar --zstd -cf "${OUT}/pslinkb-${V}-${arch}-archlinux.pkg.tar.zst" -C /tmp/arch .PKGINFO usr/
+
+          # portable
+          if [ -f "$PORT" ]; then
+            cp "$PORT" "${OUT}/pslinkb-${V}-${arch}-unknown-linux-musl-portable"
+            chmod +x "${OUT}/pslinkb-${V}-${arch}-unknown-linux-musl-portable"
+          else
+            echo "WARN: portable not found"
+          fi
+
+          echo "x86_64 packaged: $(ls "$OUT"/pslinkb-*-x86_64-* | wc -l) files"
+
+      - name: Verify IPK (x86_64)
+        run: |
+          set -e
           curl -sL https://downloads.openwrt.org/releases/24.10.4/targets/x86/64/openwrt-24.10.4-x86-64-rootfs.tar.gz -o /tmp/rootfs.tar.gz
           mkdir -p /tmp/owrt && sudo tar xzf /tmp/rootfs.tar.gz -C /tmp/owrt --exclude='dev/*'
           mkdir -p /tmp/owrt/tmp /tmp/owrt/dev /tmp/owrt/var/lock
-          ls /tmp/pkg/
-          cp /tmp/pkg/pslinkb-*-x86_64-opkg.ipk /tmp/owrt/tmp/test.ipk
+          cp /tmp/out/pslinkb-*-x86_64-openwrt.ipk /tmp/owrt/tmp/test.ipk
           sudo chroot /tmp/owrt /bin/opkg install /tmp/test.ipk --force-overwrite
           sudo chroot /tmp/owrt /usr/bin/pslinkb --version
+          echo "IPK verify x86_64: OK"
 
-  verify-opkg-aarch64:
-    needs: package
-    runs-on: ubuntu-24.04-arm
-    steps:
-      - uses: actions/download-artifact@v4
+      - name: Verify APK (x86_64)
+        run: |
+          set -e
+          curl -sL https://downloads.openwrt.org/snapshots/targets/x86/64/openwrt-x86-64-rootfs.tar.gz -o /tmp/rootfs.tar.gz
+          mkdir -p /tmp/owrt && sudo tar xzf /tmp/rootfs.tar.gz -C /tmp/owrt --exclude='dev/*'
+          mkdir -p /tmp/owrt/tmp /tmp/owrt/dev
+          cp /tmp/out/pslinkb-*-x86_64-openwrt.apk /tmp/owrt/tmp/test.apk
+          sudo chroot /tmp/owrt /usr/bin/sh -c "apk add --allow-untrusted /tmp/test.apk; exit 0"
+          sudo chroot /tmp/owrt /usr/bin/pslinkb --version
+          echo "APK verify x86_64: OK"
+
+      - uses: actions/upload-artifact@v4
         with:
-          name: packages
-          path: /tmp/pkg
-      - run: |
+          name: pkgs-x86_64
+          path: /tmp/out/
+          retention-days: 30
+
+  # ── aarch64: 打包 → 验证 IPK/APK → 上传 ──
+  package-aarch64:
+    runs-on: ubuntu-24.04-arm
+    env:
+      V: ${{ inputs.version }}
+    steps:
+      - name: Download build artifact (aarch64)
+        uses: actions/download-artifact@v4
+        with:
+          name: linux-aarch64
+          path: /tmp/bins
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          run-id: ${{ inputs.run-id }}
+
+      - name: Download deps (pslinkb-stream)
+        run: |
+          gh release download ${{ inputs.deps-tag }} --repo ${{ github.repository }} \
+            -p 'pslinkb-build-deps.tar.zst' -D /tmp/ --clobber || echo "WARN: no deps"
+          mkdir -p /tmp/deps
+          [ -f /tmp/pslinkb-build-deps.tar.zst ] && tar --zstd -xf /tmp/pslinkb-build-deps.tar.zst -C /tmp/deps || true
+
+      - name: Install OpenWRT apk tool (x86_64 + qemu)
+        run: |
+          sudo apt-get install -y zstd qemu-user-static
+          curl -sL "https://downloads.openwrt.org/snapshots/targets/x86/64/openwrt-sdk-x86-64_gcc-14_musl.Linux-x86_64.tar.zst" -o /tmp/sdk.tar.zst
+          zstd -d /tmp/sdk.tar.zst -o /tmp/sdk.tar
+          tar -x --to-stdout --wildcards '*/staging_dir/host/bin/apk' -f /tmp/sdk.tar > /usr/local/bin/owrt-apk 2>/dev/null || \
+            tar -x --to-stdout 'openwrt-sdk-*/staging_dir/host/bin/apk' -f /tmp/sdk.tar > /usr/local/bin/owrt-apk
+          chmod +x /usr/local/bin/owrt-apk
+          rm -f /tmp/sdk.tar.zst /tmp/sdk.tar
+          echo "APK version:" && /usr/local/bin/owrt-apk --version 2>&1 || echo "got binary"
+
+      - name: Package aarch64
+        run: |
+          set -e
+          V="${V#v}"
+          OUT="/tmp/out"
+          rm -rf "$OUT" && mkdir -p "$OUT"
+          arch=aarch64
+          ARCH_IPK=aarch64_generic
+
+          OWRT="/tmp/bins/pslinkb-${arch}-openwrt"
+          BUN="/tmp/bins/pslinkb-${arch}-bundle"
+          PORT="/tmp/bins/pslinkb-${arch}-portable"
+          STREAM="/tmp/deps/stream/${arch}-linux-musl/pslinkb-stream"
+          [ -f "$STREAM" ] || STREAM=""
+
+          echo "--- Packaging linux-aarch64 ---"
+
+          # openwrt.tar.gz
+          rm -rf /tmp/pkg && mkdir -p /tmp/pkg/usr/bin
+          cp "$OWRT" /tmp/pkg/usr/bin/pslinkb && chmod +x /tmp/pkg/usr/bin/pslinkb
+          [ -n "$STREAM" ] && cp "$STREAM" /tmp/pkg/usr/bin/pslinkb-stream && chmod +x /tmp/pkg/usr/bin/pslinkb-stream
+          tar czf "${OUT}/pslinkb-${V}-${arch}-openwrt.tar.gz" -C /tmp/pkg usr/
+
+          # openwrt.apk
+          rm -rf /tmp/pk-apk && mkdir -p /tmp/pk-apk/usr/bin
+          cp "$OWRT" /tmp/pk-apk/usr/bin/pslinkb && chmod +x /tmp/pk-apk/usr/bin/pslinkb
+          [ -n "$STREAM" ] && cp "$STREAM" /tmp/pk-apk/usr/bin/pslinkb-stream && chmod +x /tmp/pk-apk/usr/bin/pslinkb-stream
+          /usr/local/bin/owrt-apk mkpkg \
+            --info "name:pslinkb" --info "version:${V}-r0" --info "arch:${arch}" \
+            --info "depends:libc,librt,libpthread" \
+            --files /tmp/pk-apk --output "${OUT}/pslinkb-${V}-${arch}-openwrt.apk"
+
+          # openwrt.ipk
+          rm -rf /tmp/ipk && mkdir -p /tmp/ipk/usr/bin /tmp/ipk/CONTROL
+          cp "$OWRT" /tmp/ipk/usr/bin/pslinkb && chmod +x /tmp/ipk/usr/bin/pslinkb
+          [ -n "$STREAM" ] && cp "$STREAM" /tmp/ipk/usr/bin/pslinkb-stream && chmod +x /tmp/ipk/usr/bin/pslinkb-stream
+          printf 'Package: pslinkb\nVersion: %s-r0\nArchitecture: %s\nDepends: libc,libpthread\n' "$V" "$ARCH_IPK" > /tmp/ipk/CONTROL/control
+          tar czf /tmp/control.tar.gz -C /tmp/ipk/CONTROL .
+          tar czf /tmp/data.tar.gz -C /tmp/ipk usr/
+          echo "2.0" > /tmp/debian-binary
+          tar czf "${OUT}/pslinkb-${V}-${arch}-openwrt.ipk" -C /tmp control.tar.gz data.tar.gz debian-binary
+          rm -rf /tmp/ipk /tmp/control.tar.gz /tmp/data.tar.gz /tmp/debian-binary
+
+          # bundle.tar.zst
+          rm -rf /tmp/bun && mkdir -p /tmp/bun
+          cp "$BUN" /tmp/bun/pslinkb && chmod +x /tmp/bun/pslinkb
+          [ -n "$STREAM" ] && cp "$STREAM" /tmp/bun/pslinkb-stream && chmod +x /tmp/bun/pslinkb-stream
+          tar --zstd -cf "${OUT}/pslinkb-${V}-${arch}-unknown-linux-musl-bundle.tar.zst" -C /tmp/bun .
+
+          # debian.deb
+          rm -rf /tmp/deb && mkdir -p /tmp/deb/usr/bin /tmp/deb/DEBIAN
+          cp "$BUN" /tmp/deb/usr/bin/pslinkb && chmod +x /tmp/deb/usr/bin/pslinkb
+          [ -n "$STREAM" ] && cp "$STREAM" /tmp/deb/usr/bin/pslinkb-stream && chmod +x /tmp/deb/usr/bin/pslinkb-stream
+          printf 'Package: pslinkb\nVersion: %s\nArchitecture: arm64\nMaintainer: urlynn\nSection: net\nPriority: optional\nDescription: PS5 to Bilibili live streaming bridge\n' "$V" > /tmp/deb/DEBIAN/control
+          tar czf /tmp/control.tar.gz -C /tmp/deb/DEBIAN .
+          tar czf /tmp/data.tar.gz -C /tmp/deb usr/
+          echo "2.0" > /tmp/debian-binary
+          ar r "${OUT}/pslinkb-${V}-${arch}-debian.deb" /tmp/debian-binary /tmp/control.tar.gz /tmp/data.tar.gz
+          rm -rf /tmp/deb /tmp/control.tar.gz /tmp/data.tar.gz /tmp/debian-binary
+
+          # archlinux
+          rm -rf /tmp/arch && mkdir -p /tmp/arch/usr/bin
+          cp "$BUN" /tmp/arch/usr/bin/pslinkb && chmod +x /tmp/arch/usr/bin/pslinkb
+          [ -n "$STREAM" ] && cp "$STREAM" /tmp/arch/usr/bin/pslinkb-stream && chmod +x /tmp/arch/usr/bin/pslinkb-stream
+          printf 'pkgname = pslinkb\npkgver = %s-1\npkgdesc = PS5 to Bilibili live streaming bridge\narch = %s\n' "$V" "$arch" > /tmp/arch/.PKGINFO
+          tar --zstd -cf "${OUT}/pslinkb-${V}-${arch}-archlinux.pkg.tar.zst" -C /tmp/arch .PKGINFO usr/
+
+          # portable
+          if [ -f "$PORT" ]; then
+            cp "$PORT" "${OUT}/pslinkb-${V}-${arch}-unknown-linux-musl-portable"
+            chmod +x "${OUT}/pslinkb-${V}-${arch}-unknown-linux-musl-portable"
+          else
+            echo "WARN: portable not found"
+          fi
+
+          echo "aarch64 packaged: $(ls "$OUT"/pslinkb-*-aarch64-* | wc -l) files"
+
+      - name: Verify IPK (aarch64)
+        run: |
+          set -e
           curl -sL https://downloads.openwrt.org/releases/24.10.4/targets/armsr/armv8/openwrt-24.10.4-armsr-armv8-rootfs.tar.gz -o /tmp/rootfs.tar.gz
           mkdir -p /tmp/owrt && sudo tar xzf /tmp/rootfs.tar.gz -C /tmp/owrt --exclude='dev/*'
           mkdir -p /tmp/owrt/tmp /tmp/owrt/dev /tmp/owrt/var/lock
-          cp /tmp/pkg/pslinkb-*-aarch64-opkg.ipk /tmp/owrt/tmp/test.ipk
+          cp /tmp/out/pslinkb-*-aarch64-openwrt.ipk /tmp/owrt/tmp/test.ipk
           sudo chroot /tmp/owrt /bin/opkg install /tmp/test.ipk --force-overwrite
           sudo chroot /tmp/owrt /usr/bin/pslinkb --version
+          echo "IPK verify aarch64: OK"
 
-  verify-windows:
-    needs: package
-    runs-on: windows-latest
-    steps:
-      - uses: actions/download-artifact@v4
+      - name: Verify APK (aarch64)
+        run: |
+          set -e
+          curl -sL https://downloads.openwrt.org/snapshots/targets/armsr/armv8/openwrt-armsr-armv8-rootfs.tar.gz -o /tmp/rootfs.tar.gz
+          mkdir -p /tmp/owrt && sudo tar xzf /tmp/rootfs.tar.gz -C /tmp/owrt --exclude='dev/*'
+          mkdir -p /tmp/owrt/tmp /tmp/owrt/dev
+          cp /tmp/out/pslinkb-*-aarch64-openwrt.apk /tmp/owrt/tmp/test.apk
+          sudo chroot /tmp/owrt /usr/bin/sh -c "apk add --allow-untrusted /tmp/test.apk; exit 0"
+          sudo chroot /tmp/owrt /usr/bin/pslinkb --version
+          echo "APK verify aarch64: OK"
+
+      - uses: actions/upload-artifact@v4
         with:
-          name: packages
-          path: pkg
-      - run: |
-          unzip -q pkg/pslinkb-*-windows.zip -d win
-          win/pslinkb.exe --version
+          name: pkgs-aarch64
+          path: /tmp/out/
+          retention-days: 30
 
+  # ── Windows: 打包 → 验证 → 上传 ──
+  package-windows:
+    runs-on: windows-latest
+    env:
+      V: ${{ inputs.version }}
+    steps:
+      - name: Download build artifact (windows)
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-x86_64
+          path: /tmp/bins
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          run-id: ${{ inputs.run-id }}
+
+      - name: Download deps (pslinkb-stream)
+        shell: bash
+        run: |
+          gh release download ${{ inputs.deps-tag }} --repo ${{ github.repository }} \
+            -p 'pslinkb-build-deps.tar.zst' -D /tmp/ --clobber || echo "WARN: no deps"
+
+      - name: Package windows
+        shell: bash
+        run: |
+          set -e
+          V="${V#v}"
+          OUT="/tmp/out"
+          rm -rf "$OUT" && mkdir -p "$OUT"
+
+          WINBIN="/tmp/bins/pslinkb-x86_64-windows.exe"
+          WINSTREAM="/tmp/deps/stream/x86_64-windows/pslinkb-stream.exe"
+
+          # extract stream from deps tar.zst if not already extracted
+          if [ ! -f "$WINSTREAM" ] && [ -f /tmp/pslinkb-build-deps.tar.zst ]; then
+            mkdir -p /tmp/deps
+            tar --zstd -xf /tmp/pslinkb-build-deps.tar.zst -C /tmp/deps || true
+          fi
+          [ -f "$WINSTREAM" ] || WINSTREAM=""
+
+          rm -rf /tmp/win && mkdir -p /tmp/win
+          cp "$WINBIN" /tmp/win/pslinkb.exe
+          [ -n "$WINSTREAM" ] && cp "$WINSTREAM" /tmp/win/pslinkb-stream.exe
+          zip -qr "${OUT}/pslinkb-${V}-x86_64-windows.zip" -j /tmp/win
+          rm -rf /tmp/win
+          echo "windows packaged: OK"
+
+      - name: Verify windows
+        shell: bash
+        run: |
+          set -e
+          7z x -o/tmp/win "/tmp/out/pslinkb-*-x86_64-windows.zip" -y
+          /tmp/win/pslinkb.exe --version
+          echo "Windows verify: OK"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pkgs-windows
+          path: /tmp/out/
+          retention-days: 30
+
+  # ── macOS: 打包 → 上传 ──
+  package-macos:
+    runs-on: ubuntu-latest
+    env:
+      V: ${{ inputs.version }}
+    steps:
+      - name: Download build artifacts (macOS both archs)
+        uses: actions/download-artifact@v4
+        with:
+          pattern: 'macos-*'
+          path: /tmp/bins
+          merge-multiple: true
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          run-id: ${{ inputs.run-id }}
+
+      - name: Package macOS
+        run: |
+          set -e
+          V="${V#v}"
+          OUT="/tmp/out"
+          rm -rf "$OUT" && mkdir -p "$OUT"
+
+          for arch in aarch64 x86_64; do
+            BIN="/tmp/bins/pslinkb-${arch}-macos"
+            if [ -f "$BIN" ]; then
+              cp "$BIN" "${OUT}/pslinkb-${V}-${arch}-macos.command"
+              chmod +x "${OUT}/pslinkb-${V}-${arch}-macos.command"
+              rm -rf /tmp/macos && mkdir -p /tmp/macos
+              cp "$BIN" /tmp/macos/pslinkb && chmod +x /tmp/macos/pslinkb
+              tar czf "${OUT}/pslinkb-${V}-${arch}-macos.tar.gz" -C /tmp/macos pslinkb
+              rm -rf /tmp/macos
+              echo "macOS ${arch}: OK"
+            else
+              echo "WARN: macOS ${arch} binary not found"
+            fi
+          done
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pkgs-macos
+          path: /tmp/out/
+          retention-days: 30
+
+  # ── luci-app: 打包 → 上传 ──
+  package-luci:
+    runs-on: ubuntu-latest
+    env:
+      V: ${{ inputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install OpenWRT apk tool (x86_64 native)
+        run: |
+          sudo apt-get install -y zstd
+          curl -sL "https://downloads.openwrt.org/snapshots/targets/x86/64/openwrt-sdk-x86-64_gcc-14_musl.Linux-x86_64.tar.zst" -o /tmp/sdk.tar.zst
+          zstd -d /tmp/sdk.tar.zst -o /tmp/sdk.tar
+          tar -x --to-stdout --wildcards '*/staging_dir/host/bin/apk' -f /tmp/sdk.tar > /usr/local/bin/owrt-apk 2>/dev/null || \
+            tar -x --to-stdout 'openwrt-sdk-*/staging_dir/host/bin/apk' -f /tmp/sdk.tar > /usr/local/bin/owrt-apk
+          chmod +x /usr/local/bin/owrt-apk
+          rm -f /tmp/sdk.tar.zst /tmp/sdk.tar
+
+      - name: Package luci-app
+        run: |
+          set -e
+          V="${V#v}"
+          OUT="/tmp/out"
+          rm -rf "$OUT" && mkdir -p "$OUT"
+          SRC="./luci-app-pslinkb"
+
+          if [ ! -d "$SRC" ] || [ ! -f "$SRC/VERSION" ]; then
+            echo "SKIP: luci-app-pslinkb source not found"
+            exit 0
+          fi
+
+          LVER=$(cat "$SRC/VERSION" | tr -d '\n')
+          rm -rf /tmp/luci-pk && mkdir -p /tmp/luci-pk
+
+          # root/ -> target /
+          if [ -d "$SRC/root" ]; then
+            cd "$SRC/root" && tar cf - . 2>/dev/null | tar xf - -C /tmp/luci-pk || true
+            cd "$GITHUB_WORKSPACE"
+          fi
+
+          # htdocs -> /www/
+          if [ -d "$SRC/htdocs" ]; then
+            mkdir -p /tmp/luci-pk/www
+            cp -a "$SRC/htdocs/." /tmp/luci-pk/www/ 2>/dev/null || true
+          fi
+
+          echo "=== luci-app files ===" && find /tmp/luci-pk -type f | sort
+
+          # tar.gz
+          tar czf "${OUT}/luci-app-pslinkb-${LVER}.tar.gz" -C /tmp/luci-pk .
+
+          # APK (arch-independent)
+          /usr/local/bin/owrt-apk mkpkg \
+            --info "name:luci-app-pslinkb" --info "version:${LVER}" \
+            --info "arch:all" --info "depends:pslinkb" \
+            --files /tmp/luci-pk --output "${OUT}/luci-app-pslinkb-${LVER}.apk" 2>&1 || echo "WARN: APK mkpkg failed"
+
+          # IPK
+          rm -rf /tmp/luci-ipk-data && cp -a /tmp/luci-pk /tmp/luci-ipk-data
+          mkdir -p /tmp/luci-ipk-data/CONTROL
+          printf 'Package: luci-app-pslinkb\nVersion: %s\nArchitecture: all\nDepends: pslinkb\n' "$LVER" > /tmp/luci-ipk-data/CONTROL/control
+          tar czf /tmp/control.tar.gz -C /tmp/luci-ipk-data/CONTROL .
+          rm -rf /tmp/luci-ipk-data/CONTROL
+          tar czf /tmp/data.tar.gz -C /tmp/luci-ipk-data .
+          echo "2.0" > /tmp/debian-binary
+          tar czf "${OUT}/luci-app-pslinkb-${LVER}.ipk" -C /tmp control.tar.gz data.tar.gz debian-binary
+          rm -rf /tmp/luci-ipk-data /tmp/luci-pk /tmp/control.tar.gz /tmp/data.tar.gz /tmp/debian-binary
+
+          echo "luci-app packaged: $(ls "$OUT"/luci-app-* | wc -l) files"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pkgs-luci
+          path: /tmp/out/
+          retention-days: 30
+
+  # ── Release: 收集所有产物 → 创建 Release ──
   release:
-    needs: [verify-opkg-x86_64, verify-opkg-aarch64, verify-windows]
+    needs: [package-x86_64, package-aarch64, package-windows, package-macos, package-luci]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4
         with:
-          name: packages
+          pattern: 'pkgs-*'
           path: /tmp/pkg
-      - name: Create Release and Upload
-        run: |
-          V=${{ inputs.version }}
-          gh release delete "v$V" --repo ${{ github.repository }} -y 2>&1 || true
-          gh release create "v$V" /tmp/pkg/* \
-            --repo ${{ github.repository }} \
-            --title "v$V" \
-            --notes "pslinkb v$V — auto-built and verified by CI"
+          merge-multiple: true
+      - name: Create GitHub Release
         env:
+          V: ${{ inputs.version }}
           GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="v${V#v}"
+          echo "=== All packages ===" && ls -la /tmp/pkg/
+          echo "Total: $(ls /tmp/pkg/ | wc -l) files"
+          gh release delete "$TAG" --repo ${{ github.repository }} -y 2>&1 || true
+          gh release create "$TAG" /tmp/pkg/* \
+            --repo ${{ github.repository }} \
+            --title "$TAG" \
+            --notes "pslinkb $TAG — auto-built and verified by CI"
