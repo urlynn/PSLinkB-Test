@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       platform:
-        description: 'Target (all = all 4 jobs)'
+        description: 'Target (all = all 3 jobs)'
         required: true
         type: choice
         options: [all, macos-aarch64, macos-x86_64, windows-x86_64]
@@ -131,7 +131,7 @@ jobs:
           path: /tmp/ffbuild/bin/pslinkb-stream.exe
 
   windows-aarch64:
-    if: ${{ github.event.inputs.platform == 'all' || github.event.inputs.platform == 'windows-aarch64' }}
+    if: ${{ github.event.inputs.platform == 'windows-aarch64' }}
     runs-on: windows-11-arm
     defaults:
       run:
