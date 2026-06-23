@@ -95,6 +95,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Download FFmpeg deps from release
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           gh release download ${{ inputs.deps-tag }} --repo ${{ github.repository }} \
             -p 'pslinkb-build-deps.tar.zst' -D /tmp/ --clobber || echo "WARN: no deps"
