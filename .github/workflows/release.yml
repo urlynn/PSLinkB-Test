@@ -12,18 +12,12 @@ on:
         required: true
         type: string
         default: 'build-deps'
-      luci-only:
-        description: 'Only package luci-app (skip all others)'
-        type: boolean
-        required: false
-        default: false
 
 permissions:
   contents: write
 
 jobs:
   package-x86_64:
-    if: ${{ inputs.luci-only == false }}
     runs-on: ubuntu-latest
     env:
       V: ${{ inputs.version }}
@@ -143,7 +137,6 @@ jobs:
           retention-days: 30
 
   package-aarch64:
-    if: ${{ inputs.luci-only == false }}
     runs-on: ubuntu-24.04-arm
     env:
       V: ${{ inputs.version }}
@@ -256,7 +249,6 @@ jobs:
           retention-days: 30
 
   package-windows:
-    if: ${{ inputs.luci-only == false }}
     runs-on: windows-latest
     env:
       V: ${{ inputs.version }}
@@ -307,7 +299,6 @@ jobs:
           retention-days: 30
 
   package-macos:
-    if: ${{ inputs.luci-only == false }}
     runs-on: ubuntu-latest
     env:
       V: ${{ inputs.version }}
@@ -410,18 +401,7 @@ jobs:
           echo "luci-app done"
           ls -la "$OUT/"
 
-      - name: Upload to release (luci-only mode)
-        if: ${{ inputs.luci-only }}
-        env:
-          V: ${{ inputs.version }}
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          TAG="v${V#v}"
-          gh release upload "$TAG" /tmp/out/* --repo ${{ github.repository }} --clobber
-          echo "Uploaded luci-app to $TAG"
-
       - uses: actions/upload-artifact@v4
-        if: ${{ inputs.luci-only == false }}
         with:
           name: pkgs-luci
           path: /tmp/out/
