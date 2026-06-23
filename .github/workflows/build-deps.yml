@@ -117,6 +117,14 @@ jobs:
             /tmp/stream_copy.c \
             $(pkg-config --cflags --libs --static libavformat libavcodec libavutil) \
             -o /tmp/ffbuild/bin/pslinkb-stream.exe
+      - name: Copy output (MSYS2 /tmp → workspace)
+        shell: bash
+        run: |
+          echo "MSYS2 tmp paths:"
+          ls /tmp/ffbuild/bin/ 2>/dev/null || echo "  /tmp/ffbuild/bin: not found"
+          ls /c/tmp/ffbuild/bin/ 2>/dev/null || echo "  /c/tmp/ffbuild/bin: not found"
+          ls /d/a/_temp/msys64/tmp/ffbuild/bin/ 2>/dev/null || echo "  _temp/msys64/tmp: not found"
+          find /d -name "pslinkb-stream.exe" -type f 2>/dev/null | head -3 || echo "  find: none found"
       - uses: actions/upload-artifact@v4
         with:
           name: windows-x86_64
