@@ -45,8 +45,18 @@ jobs:
           mkdir -p /tmp/deps
           [ -f /tmp/pslinkb-build-deps.tar.gz ] && tar xzf /tmp/pslinkb-build-deps.tar.gz -C /tmp/deps || true
 
-      - name: Install zstd (for bundle.tar.zst)
-        run: sudo apt-get install -y zstd
+      - name: Install zstd + OpenWRT apk tool
+        run: |
+          sudo apt-get install -y zstd
+          BASE="https://downloads.openwrt.org/snapshots/targets/x86/64"
+          SDK_NAME=$(curl -sL "$BASE/" | grep -o 'openwrt-sdk-x86-64[^"]*musl\.Linux-x86_64\.tar\.zst' | head -1)
+          echo "SDK: $SDK_NAME"
+          curl -sL "$BASE/$SDK_NAME" -o /tmp/sdk.tar.zst
+          zstd -d /tmp/sdk.tar.zst -o /tmp/sdk.tar
+          tar -x --to-stdout --wildcards '*/staging_dir/host/bin/apk' -f /tmp/sdk.tar > /usr/local/bin/owrt-apk 2>/dev/null || \
+            tar -x --to-stdout 'openwrt-sdk-*/staging_dir/host/bin/apk' -f /tmp/sdk.tar > /usr/local/bin/owrt-apk
+          chmod +x /usr/local/bin/owrt-apk
+          rm -f /tmp/sdk.tar.zst /tmp/sdk.tar
 
       - name: Package x86_64
         run: |
@@ -79,15 +89,10 @@ jobs:
           [ -n "$STREAM" ] && cp "$STREAM" /tmp/pk-apk/usr/bin/pslinkb-stream && chmod +x /tmp/pk-apk/usr/bin/pslinkb-stream
           cp "$CFG_DIR/etc/config/pslinkb" /tmp/pk-apk/etc/config/
           cp "$CFG_DIR/etc/init.d/pslinkb" /tmp/pk-apk/etc/init.d/ && chmod +x /tmp/pk-apk/etc/init.d/pslinkb
-          cat > /tmp/pk-apk/.PKGINFO << EOF
-pkgname = pslinkb
-pkgver = ${V}-r0
-arch = ${arch}
-depends = libc librt libpthread
-origin = pslinkb
-maintainer = urlynn
-EOF
-          tar czf "${OUT}/pslinkb-${V}-${arch}-openwrt.apk" -C /tmp/pk-apk .PKGINFO usr/ etc/
+          /usr/local/bin/owrt-apk mkpkg \
+            --info "name:pslinkb" --info "version:${V}-r0" --info "arch:${arch}" \
+            --info "depends:libc,librt,libpthread" \
+            --files /tmp/pk-apk --output "${OUT}/pslinkb-${V}-${arch}-openwrt.apk"
 
           # openwrt.ipk
           CFG_DIR="$GITHUB_WORKSPACE/openwrt"
@@ -193,8 +198,18 @@ EOF
           mkdir -p /tmp/deps
           [ -f /tmp/pslinkb-build-deps.tar.gz ] && tar xzf /tmp/pslinkb-build-deps.tar.gz -C /tmp/deps || true
 
-      - name: Install zstd (for bundle.tar.zst)
-        run: sudo apt-get install -y zstd
+      - name: Install zstd + OpenWRT apk tool (qemu for x86_64 binary)
+        run: |
+          sudo apt-get install -y zstd qemu-user-static
+          BASE="https://downloads.openwrt.org/snapshots/targets/x86/64"
+          SDK_NAME=$(curl -sL "$BASE/" | grep -o 'openwrt-sdk-x86-64[^"]*musl\.Linux-x86_64\.tar\.zst' | head -1)
+          echo "SDK: $SDK_NAME"
+          curl -sL "$BASE/$SDK_NAME" -o /tmp/sdk.tar.zst
+          zstd -d /tmp/sdk.tar.zst -o /tmp/sdk.tar
+          tar -x --to-stdout --wildcards '*/staging_dir/host/bin/apk' -f /tmp/sdk.tar > /usr/local/bin/owrt-apk 2>/dev/null || \
+            tar -x --to-stdout 'openwrt-sdk-*/staging_dir/host/bin/apk' -f /tmp/sdk.tar > /usr/local/bin/owrt-apk
+          chmod +x /usr/local/bin/owrt-apk
+          rm -f /tmp/sdk.tar.zst /tmp/sdk.tar
 
       - name: Package aarch64
         run: |
@@ -227,15 +242,10 @@ EOF
           [ -n "$STREAM" ] && cp "$STREAM" /tmp/pk-apk/usr/bin/pslinkb-stream && chmod +x /tmp/pk-apk/usr/bin/pslinkb-stream
           cp "$CFG_DIR/etc/config/pslinkb" /tmp/pk-apk/etc/config/
           cp "$CFG_DIR/etc/init.d/pslinkb" /tmp/pk-apk/etc/init.d/ && chmod +x /tmp/pk-apk/etc/init.d/pslinkb
-          cat > /tmp/pk-apk/.PKGINFO << EOF
-pkgname = pslinkb
-pkgver = ${V}-r0
-arch = ${arch}
-depends = libc librt libpthread
-origin = pslinkb
-maintainer = urlynn
-EOF
-          tar czf "${OUT}/pslinkb-${V}-${arch}-openwrt.apk" -C /tmp/pk-apk .PKGINFO usr/ etc/
+          /usr/local/bin/owrt-apk mkpkg \
+            --info "name:pslinkb" --info "version:${V}-r0" --info "arch:${arch}" \
+            --info "depends:libc,librt,libpthread" \
+            --files /tmp/pk-apk --output "${OUT}/pslinkb-${V}-${arch}-openwrt.apk"
 
           # openwrt.ipk
           CFG_DIR="$GITHUB_WORKSPACE/openwrt"
@@ -432,8 +442,18 @@ EOF
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install zstd (for bundle.tar.zst)
-        run: sudo apt-get install -y zstd
+      - name: Install zstd + OpenWRT apk tool
+        run: |
+          sudo apt-get install -y zstd
+          BASE="https://downloads.openwrt.org/snapshots/targets/x86/64"
+          SDK_NAME=$(curl -sL "$BASE/" | grep -o 'openwrt-sdk-x86-64[^"]*musl\.Linux-x86_64\.tar\.zst' | head -1)
+          echo "SDK: $SDK_NAME"
+          curl -sL "$BASE/$SDK_NAME" -o /tmp/sdk.tar.zst
+          zstd -d /tmp/sdk.tar.zst -o /tmp/sdk.tar
+          tar -x --to-stdout --wildcards '*/staging_dir/host/bin/apk' -f /tmp/sdk.tar > /usr/local/bin/owrt-apk 2>/dev/null || \
+            tar -x --to-stdout 'openwrt-sdk-*/staging_dir/host/bin/apk' -f /tmp/sdk.tar > /usr/local/bin/owrt-apk
+          chmod +x /usr/local/bin/owrt-apk
+          rm -f /tmp/sdk.tar.zst /tmp/sdk.tar
 
       - name: Package luci-app
         run: |
