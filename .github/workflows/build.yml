@@ -19,20 +19,20 @@ on:
         required: false
         default: true
       macos-aarch64:
-        description: 'Build macos-aarch64 (needs build-deps run-id)'
+        description: 'Build macos-aarch64'
         type: boolean
         required: false
         default: true
       macos-x86_64:
-        description: 'Build macos-x86_64 (needs build-deps run-id)'
+        description: 'Build macos-x86_64'
         type: boolean
         required: false
         default: true
-      deps-run-id:
-        description: 'build-deps workflow run ID (for macOS FFmpeg libs, empty = skip)'
+      deps-tag:
+        description: 'Release tag with pslinkb-build-deps.tar.zst'
         type: string
         required: false
-        default: ''
+        default: 'build-deps'
 
 jobs:
   build-linux-x86_64:
@@ -94,28 +94,26 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Download FFmpeg deps (macos-aarch64)
-        if: ${{ inputs.deps-run-id != '' }}
-        uses: actions/download-artifact@v4
-        with:
-          name: macos-aarch64
-          path: /tmp/ffmpeg-deps
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          run-id: ${{ inputs.deps-run-id }}
-      - name: Install FFmpeg into ffbuild/
-        if: ${{ inputs.deps-run-id != '' }}
+      - name: Download FFmpeg deps from release
         run: |
-          set -e
-          rm -rf ffbuild/macos-aarch64 && mkdir -p ffbuild/macos-aarch64
-          cp -a /tmp/ffmpeg-deps/. ffbuild/macos-aarch64/
-          echo "=== FFmpeg deps ===" && ls -la ffbuild/macos-aarch64/lib/libav*.a
+          gh release download ${{ inputs.deps-tag }} --repo ${{ github.repository }} \
+            -p 'pslinkb-build-deps.tar.zst' -D /tmp/ --clobber || echo "WARN: no deps"
+          mkdir -p /tmp/deps
+          [ -f /tmp/pslinkb-build-deps.tar.zst ] && tar --zstd -xf /tmp/pslinkb-build-deps.tar.zst -C /tmp/deps || true
+          # Extract macOS aarch64 FFmpeg libs
+          if [ -d /tmp/deps/ffbuild/aarch64-macos ]; then
+            rm -rf ffbuild/macos-aarch64 && mkdir -p ffbuild/macos-aarch64
+            cp -a /tmp/deps/ffbuild/aarch64-macos/. ffbuild/macos-aarch64/
+            echo "=== FFmpeg deps ===" && ls -la ffbuild/macos-aarch64/lib/libav*.a
+          else
+            echo "ERROR: macOS aarch64 FFmpeg not found in deps"
+            exit 1
+          fi
       - name: Build pslinkb (macOS aarch64)
-        if: ${{ inputs.deps-run-id != '' }}
         run: |
           cargo build --release --features "cli,channel-broadcast,ffi-ffmpeg,dns-redirect"
           cp target/release/pslinkb /tmp/pslinkb-aarch64-macos
       - uses: actions/upload-artifact@v4
-        if: ${{ inputs.deps-run-id != '' }}
         with:
           name: macos-aarch64
           path: /tmp/pslinkb-aarch64-macos
@@ -126,28 +124,26 @@ jobs:
     runs-on: macos-13
     steps:
       - uses: actions/checkout@v4
-      - name: Download FFmpeg deps (macos-x86_64)
-        if: ${{ inputs.deps-run-id != '' }}
-        uses: actions/download-artifact@v4
-        with:
-          name: macos-x86_64
-          path: /tmp/ffmpeg-deps
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          run-id: ${{ inputs.deps-run-id }}
-      - name: Install FFmpeg into ffbuild/
-        if: ${{ inputs.deps-run-id != '' }}
+      - name: Download FFmpeg deps from release
         run: |
-          set -e
-          rm -rf ffbuild/macos-x86_64 && mkdir -p ffbuild/macos-x86_64
-          cp -a /tmp/ffmpeg-deps/. ffbuild/macos-x86_64/
-          echo "=== FFmpeg deps ===" && ls -la ffbuild/macos-x86_64/lib/libav*.a
+          gh release download ${{ inputs.deps-tag }} --repo ${{ github.repository }} \
+            -p 'pslinkb-build-deps.tar.zst' -D /tmp/ --clobber || echo "WARN: no deps"
+          mkdir -p /tmp/deps
+          [ -f /tmp/pslinkb-build-deps.tar.zst ] && tar --zstd -xf /tmp/pslinkb-build-deps.tar.zst -C /tmp/deps || true
+          # Extract macOS x86_64 FFmpeg libs
+          if [ -d /tmp/deps/ffbuild/x86_64-macos ]; then
+            rm -rf ffbuild/macos-x86_64 && mkdir -p ffbuild/macos-x86_64
+            cp -a /tmp/deps/ffbuild/x86_64-macos/. ffbuild/macos-x86_64/
+            echo "=== FFmpeg deps ===" && ls -la ffbuild/macos-x86_64/lib/libav*.a
+          else
+            echo "ERROR: macOS x86_64 FFmpeg not found in deps"
+            exit 1
+          fi
       - name: Build pslinkb (macOS x86_64)
-        if: ${{ inputs.deps-run-id != '' }}
         run: |
           cargo build --release --features "cli,channel-broadcast,ffi-ffmpeg,dns-redirect"
           cp target/release/pslinkb /tmp/pslinkb-x86_64-macos
       - uses: actions/upload-artifact@v4
-        if: ${{ inputs.deps-run-id != '' }}
         with:
           name: macos-x86_64
           path: /tmp/pslinkb-x86_64-macos
