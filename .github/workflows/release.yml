@@ -137,4 +137,5 @@ jobs:
             --repo ${{ github.repository }} \
             --title "v$V" \
             --notes "pslinkb v$V — auto-built and verified by CI" \
-            --generate-notes
+            --generate-notes \
+            --clobber
