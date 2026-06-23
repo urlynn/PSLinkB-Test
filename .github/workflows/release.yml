@@ -51,8 +51,6 @@ jobs:
         run: cargo build --release --target x86_64-unknown-linux-musl --features openwrt,channel-mpsc,external-ffmpeg && cp target/x86_64-unknown-linux-musl/release/pslinkb /tmp/pslinkb-x86_64-openwrt
       - name: Build bundle (external-ffmpeg)
         run: cargo build --release --target x86_64-unknown-linux-musl --features cli,channel-mpsc,external-ffmpeg,dns-redirect && cp target/x86_64-unknown-linux-musl/release/pslinkb /tmp/pslinkb-x86_64-bundle
-      - name: Build portable (ffi-ffmpeg)
-        run: cargo build --release --target x86_64-unknown-linux-musl --features cli,channel-mpsc,ffi-ffmpeg,dns-redirect && cp target/x86_64-unknown-linux-musl/release/pslinkb /tmp/pslinkb-x86_64-portable
       - uses: actions/upload-artifact@v4
         with:
           name: linux-x86_64
