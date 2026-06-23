@@ -3,16 +3,26 @@ name: Build Deps (stream + ffmpeg)
 on:
   workflow_dispatch:
     inputs:
-      platform:
-        description: 'Target (all = all 4 jobs)'
-        required: true
-        type: choice
-        options: [all, macos-aarch64, macos-x86_64, windows-x86_64, windows-aarch64]
-        default: 'all'
+      macos-arm64:
+        description: 'macOS aarch64 FFmpeg'
+        type: boolean
+        default: true
+      macos-x86_64:
+        description: 'macOS x86_64 FFmpeg'
+        type: boolean
+        default: true
+      windows-x86_64:
+        description: 'Windows x86_64 stream'
+        type: boolean
+        default: true
+      windows-arm64:
+        description: 'Windows aarch64 stream'
+        type: boolean
+        default: false
 
 jobs:
   macos-aarch64:
-    if: ${{ github.event.inputs.platform == 'all' || github.event.inputs.platform == 'macos-aarch64' }}
+    if: ${{ inputs.macos-arm64 }}
     runs-on: macos-26
     steps:
       - uses: actions/checkout@v4
@@ -42,7 +52,7 @@ jobs:
             /tmp/ffbuild/include/
 
   macos-x86_64:
-    if: ${{ github.event.inputs.platform == 'all' || github.event.inputs.platform == 'macos-x86_64' }}
+    if: ${{ inputs.macos-x86_64 }}
     runs-on: macos-26-intel
     steps:
       - uses: actions/checkout@v4
@@ -72,7 +82,7 @@ jobs:
             /tmp/ffbuild/include/
 
   windows-x86_64:
-    if: ${{ github.event.inputs.platform == 'all' || github.event.inputs.platform == 'windows-x86_64' }}
+    if: ${{ inputs.windows-x86_64 }}
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -123,7 +133,7 @@ jobs:
           path: /tmp/ffbuild/bin/pslinkb-stream.exe
 
   windows-aarch64:
-    if: ${{ github.event.inputs.platform == 'all' || github.event.inputs.platform == 'windows-aarch64' }}
+    if: ${{ inputs.windows-arm64 }}
     runs-on: windows-11-arm
     defaults:
       run:
@@ -143,7 +153,7 @@ jobs:
             --enable-protocol=tcp,rtmp --enable-demuxer=flv --enable-muxer=flv --enable-parser=h264 --enable-network \
             --disable-filters --disable-swscale --disable-bsfs --disable-doc --disable-debug --disable-ffplay --disable-ffprobe \
             --disable-iconv --disable-lzma --disable-bzlib --disable-zlib --disable-runtime-cpudetect
-          make -j4 && make install
+          make -j$(nproc) && make install
           mkdir -p /tmp/ffbuild/bin
           cp src/stream_copy.c /tmp/
           gcc -O2 -flto \
