@@ -251,44 +251,66 @@ jobs:
           [ -f /tmp/pslinkb-deps-linux-x86_64.tar.gz ] && tar xzf /tmp/pslinkb-deps-linux-x86_64.tar.gz -C /tmp/deps-x86_64 || true
           [ -f /tmp/pslinkb-deps-linux-aarch64.tar.gz ] && tar xzf /tmp/pslinkb-deps-linux-aarch64.tar.gz -C /tmp/deps-aarch64 || true
 
-      - name: Resolve SDK
+      - name: Resolve all SDKs
         id: sdk
         run: |
           sudo apt-get install -y zstd
-          FILE=$(curl -sL 'https://downloads.openwrt.org/snapshots/targets/x86/64/' | grep -oP 'openwrt-sdk[^"]*tar\.zst' | head -1)
-          HASH=$(curl -sL 'https://downloads.openwrt.org/snapshots/targets/x86/64/sha256sums' | grep -F "$FILE" | awk '{print $1;exit}')
-          echo "file=$FILE" >> "$GITHUB_OUTPUT"
-          echo "hash=$HASH" >> "$GITHUB_OUTPUT"
+          resolve() { # usage: resolve <dir-url> <sha256sums-url> <output-prefix>
+            F=$(curl -sL "$1" | grep -oP 'openwrt-sdk[^"]*tar\.zst' | head -1)
+            H=$(curl -sL "$2" | grep -F "$F" | awk '{print $1;exit}')
+            echo "${3}_file=$F" >> "$GITHUB_OUTPUT"
+            echo "${3}_hash=$H" >> "$GITHUB_OUTPUT"
+          }
+          resolve 'https://downloads.openwrt.org/snapshots/targets/x86/64/' \
+                  'https://downloads.openwrt.org/snapshots/targets/x86/64/sha256sums' snap
+          resolve 'https://downloads.openwrt.org/releases/24.10.7/targets/x86/64/' \
+                  'https://downloads.openwrt.org/releases/24.10.7/targets/x86/64/sha256sums' ipk_x86
+          resolve 'https://downloads.openwrt.org/releases/24.10.7/targets/armsr/armv8/' \
+                  'https://downloads.openwrt.org/releases/24.10.7/targets/armsr/armv8/sha256sums' ipk_armsr
 
       - uses: actions/cache@v4
         id: cache
         with:
           path: /tmp/sdk-cache
-          key: openwrt-sdk-${{ steps.sdk.outputs.hash }}
+          key: openwrt-sdk-${{ steps.sdk.outputs.snap_hash }}-${{ steps.sdk.outputs.ipk_x86_hash }}-${{ steps.sdk.outputs.ipk_armsr_hash }}
 
-      - name: Download SDK
+      - name: Download SDKs
         if: steps.cache.outputs.cache-hit != 'true'
         run: |
           mkdir -p /tmp/sdk-cache
-          BASE="https://downloads.openwrt.org/snapshots/targets/x86/64"
-          curl -L --retry 3 -o /tmp/sdk-cache/sdk.tar.zst "$BASE/${{ steps.sdk.outputs.file }}"
-          echo "${{ steps.sdk.outputs.hash }}  /tmp/sdk-cache/sdk.tar.zst" | sha256sum -c
+          download() { # usage: download <base-url> <file> <hash> <cache-name>
+            curl -L --retry 3 -o "/tmp/sdk-cache/$4.tar.zst" "$1/$2"
+            echo "$3  /tmp/sdk-cache/$4.tar.zst" | sha256sum -c
+          }
+          download 'https://downloads.openwrt.org/snapshots/targets/x86/64' \
+                   '${{ steps.sdk.outputs.snap_file }}' '${{ steps.sdk.outputs.snap_hash }}' snap
+          download 'https://downloads.openwrt.org/releases/24.10.7/targets/x86/64' \
+                   '${{ steps.sdk.outputs.ipk_x86_file }}' '${{ steps.sdk.outputs.ipk_x86_hash }}' ipk-x86
+          download 'https://downloads.openwrt.org/releases/24.10.7/targets/armsr/armv8' \
+                   '${{ steps.sdk.outputs.ipk_armsr_file }}' '${{ steps.sdk.outputs.ipk_armsr_hash }}' ipk-armsr
 
-      - name: Setup SDK
+      - name: Setup SDKs
         run: |
-          rm -rf /tmp/sdk-snap && mkdir /tmp/sdk-snap
-          zstd -d /tmp/sdk-cache/sdk.tar.zst -o /tmp/sdk-snap/sdk.tar
-          tar -xf /tmp/sdk-snap/sdk.tar -C /tmp/sdk-snap/
-          SNAP_DIR=$(ls -d /tmp/sdk-snap/openwrt-sdk-*)
-          cat > /usr/local/bin/openwrt-apk << EOF
+          setup() { # usage: setup <cache-name> <wrapper-name>
+            rm -rf "/tmp/sdk-$1" && mkdir "/tmp/sdk-$1"
+            zstd -d "/tmp/sdk-cache/$1.tar.zst" -o "/tmp/sdk-$1/sdk.tar"
+            tar -xf "/tmp/sdk-$1/sdk.tar" -C "/tmp/sdk-$1/"
+            DIR=$(ls -d "/tmp/sdk-$1/openwrt-sdk-*")
+            cat > "/usr/local/bin/$2" << EOF
           #!/bin/sh
-          LD_PRELOAD=$SNAP_DIR/staging_dir/host/lib/runas.so \
-          exec $SNAP_DIR/staging_dir/host/lib/ld-linux-x86-64.so.2 \
-            --library-path $SNAP_DIR/staging_dir/host/lib \
-            $SNAP_DIR/staging_dir/host/bin/.apk.bin "\$@"
+          LD_PRELOAD=$DIR/staging_dir/host/lib/runas.so \
+          exec $DIR/staging_dir/host/lib/ld-linux-x86-64.so.2 \
+            --library-path $DIR/staging_dir/host/lib \
+            $DIR/staging_dir/host/bin/.apk.bin "\$@"
           EOF
-          chmod +x /usr/local/bin/openwrt-apk
+            chmod +x "/usr/local/bin/$2"
+          }
+          setup snap openwrt-apk
           openwrt-apk --version
+          setup ipk-x86 openwrt-apk-ipk-x86
+          openwrt-apk-ipk-x86 --version
+          setup ipk-armsr openwrt-apk-ipk-armsr
+          openwrt-apk-ipk-armsr --version
 
       - name: Package x86_64 (tar.gz + apk + ipk)
         run: |
