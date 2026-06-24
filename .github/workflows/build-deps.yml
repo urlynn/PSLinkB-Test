@@ -45,9 +45,10 @@ jobs:
           gcc -Os -flto -ffunction-sections -fdata-sections -static -no-pie -march=x86-64-v3 \
             /tmp/stream_copy.c \
             -I/tmp/ffbuild/include -L/tmp/ffbuild/lib \
-            -Wl,-Bstatic -lavformat -lavcodec -lavutil -Wl,-Bdynamic \
+            -lavformat -lavcodec -lavutil \
             -Wl,--gc-sections \
             -o /tmp/ffbuild/bin/pslinkb-stream
+          strip /tmp/ffbuild/bin/pslinkb-stream
       - name: Verify - version + musl
         run: |
           BIN=/tmp/ffbuild/bin/pslinkb-stream
@@ -95,9 +96,10 @@ jobs:
               gcc -Os -flto -ffunction-sections -fdata-sections -static -no-pie \
                 /tmp/stream_copy.c \
                 -I/tmp/ffbuild/include -L/tmp/ffbuild/lib \
-                -Wl,-Bstatic -lavformat -lavcodec -lavutil -Wl,-Bdynamic \
+                -lavformat -lavcodec -lavutil \
                 -Wl,--gc-sections \
                 -o /tmp/ffbuild/bin/pslinkb-stream
+              strip /tmp/ffbuild/bin/pslinkb-stream
             '
       - name: Verify - version + musl
         run: |
