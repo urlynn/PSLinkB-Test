@@ -469,7 +469,9 @@ jobs:
           resolve 'https://downloads.openwrt.org/releases/25.12.4/targets/armsr/armv8/' 'https://downloads.openwrt.org/releases/25.12.4/targets/armsr/armv8/sha256sums' apk_armsr
       - uses: actions/cache@v4
         id: cache-apk-x86
-        with: { path: /tmp/sdk-cache, key: sdk-apk-x86-${{ steps.sdk.outputs.apk_x86_hash }} }
+        with:
+          path: /tmp/sdk-cache
+          key: sdk-apk-x86-${{ steps.sdk.outputs.apk_x86_hash }}
       - uses: actions/cache@v4
         id: cache-apk-armsr
         with: { path: /tmp/sdk-cache, key: sdk-apk-armsr-${{ steps.sdk.outputs.apk_armsr_hash }} }
