@@ -286,7 +286,7 @@ jobs:
           gh release upload "$TAG" /tmp/pslinkb-deps-windows-x86_64.tar.gz --repo ${{ github.repository }} --clobber
 
   windows-aarch64:
-    if: ${{ inputs.platform == 'all' || inputs.platform == 'windows-aarch64' }}
+    if: ${{ inputs.platform == 'windows-aarch64' }}
     runs-on: windows-11-arm
     timeout-minutes: 10
     defaults:
