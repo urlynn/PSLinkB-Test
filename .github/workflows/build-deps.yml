@@ -40,10 +40,10 @@ jobs:
             --disable-iconv --disable-lzma --disable-bzlib --disable-zlib --disable-runtime-cpudetect
           make -j$(nproc) && make install
           mkdir -p /tmp/ffbuild/bin
-          gcc -O2 -static \
+          gcc -static -no-pie -O2 \
             /tmp/stream_copy.c \
             -I/tmp/ffbuild/include -L/tmp/ffbuild/lib \
-            -lavformat -lavcodec -lavutil \
+            -Wl,-Bstatic -lavformat -lavcodec -lavutil -Wl,-Bdynamic \
             -o /tmp/ffbuild/bin/pslinkb-stream
       - name: Verify - version + musl
         run: |
