@@ -16,9 +16,6 @@ on:
 permissions:
   contents: write
 
-env:
-  ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: 'true'
-
 jobs:
   package-x86_64:
     runs-on: ubuntu-latest
@@ -27,7 +24,6 @@ jobs:
       V: ${{ inputs.version }}
       ARCH: x86_64
       DEB_ARCH: amd64
-      ARCH_IPK: x86_64
     steps:
       - uses: actions/checkout@v4
       - name: Download linux-x86_64 artifact
@@ -53,24 +49,6 @@ jobs:
       - name: Install zstd
         run: sudo apt-get install -y zstd
 
-      - name: Install OpenWRT SDK apk tool
-        run: |
-          sudo apt-get install -y zstd
-          BASE="https://downloads.openwrt.org/snapshots/targets/x86/64"
-          SDK_NAME=$(curl -sL "$BASE/" | grep -oP 'openwrt-sdk[^"]*tar\.zst' | head -1)
-          [ -n "$SDK_NAME" ] || { echo "ERROR: SDK not found at $BASE/"; curl -sL "$BASE/"; exit 1; }
-          echo "SDK: $SDK_NAME"
-          curl -sL "$BASE/$SDK_NAME" -o /tmp/sdk.tar.zst
-          rm -rf /tmp/sdk && mkdir -p /tmp/sdk
-          zstd -d /tmp/sdk.tar.zst -o /tmp/sdk.tar
-          tar -xf /tmp/sdk.tar -C /tmp/sdk/
-          SDK_DIR=$(ls -d /tmp/sdk/openwrt-sdk-*)
-          rm -rf /tmp/sdk.tar.zst /tmp/sdk.tar
-          export PATH="$SDK_DIR/staging_dir/host/bin:$PATH"
-          export LD_LIBRARY_PATH="$SDK_DIR/staging_dir/host/lib:$LD_LIBRARY_PATH"
-          file "$SDK_DIR/staging_dir/host/bin/apk"
-          apk --version
-
       - name: Verify stream
         run: |
           set -e
@@ -81,54 +59,6 @@ jobs:
           else
             echo "WARN: no stream"
           fi
-
-      - name: Package openwrt.tar.gz
-        run: |
-          set -e; V="${V#v}"; OUT=/tmp/out; mkdir -p "$OUT"
-          OWRT="/tmp/bins/pslinkb-${ARCH}-openwrt"
-          STREAM="/tmp/deps/stream/${ARCH}-linux-musl/pslinkb-stream"; [ -f "$STREAM" ] || STREAM=""
-          rm -rf /tmp/pkg && mkdir -p /tmp/pkg/usr/bin /tmp/pkg/etc/config /tmp/pkg/etc/init.d
-          cp "$OWRT" /tmp/pkg/usr/bin/pslinkb && chmod +x /tmp/pkg/usr/bin/pslinkb
-          [ -n "$STREAM" ] && cp "$STREAM" /tmp/pkg/usr/bin/pslinkb-stream && chmod +x /tmp/pkg/usr/bin/pslinkb-stream
-          cp "$GITHUB_WORKSPACE/openwrt/etc/config/pslinkb" /tmp/pkg/etc/config/
-          cp "$GITHUB_WORKSPACE/openwrt/etc/init.d/pslinkb" /tmp/pkg/etc/init.d/ && chmod +x /tmp/pkg/etc/init.d/pslinkb
-          tar czf "${OUT}/pslinkb-${V}-${ARCH}-openwrt.tar.gz" -C /tmp/pkg usr/ etc/
-
-      - name: Package openwrt.apk (SDK mkpkg v3)
-        run: |
-          set -e; V="${V#v}"; OUT=/tmp/out; mkdir -p "$OUT"
-          OWRT="/tmp/bins/pslinkb-${ARCH}-openwrt"
-          STREAM="/tmp/deps/stream/${ARCH}-linux-musl/pslinkb-stream"; [ -f "$STREAM" ] || STREAM=""
-          rm -rf /tmp/pa && mkdir -p /tmp/pa/usr/bin /tmp/pa/etc/config /tmp/pa/etc/init.d
-          cp "$OWRT" /tmp/pa/usr/bin/pslinkb && chmod +x /tmp/pa/usr/bin/pslinkb
-          [ -n "$STREAM" ] && cp "$STREAM" /tmp/pa/usr/bin/pslinkb-stream && chmod +x /tmp/pa/usr/bin/pslinkb-stream
-          cp "$GITHUB_WORKSPACE/openwrt/etc/config/pslinkb" /tmp/pa/etc/config/
-          cp "$GITHUB_WORKSPACE/openwrt/etc/init.d/pslinkb" /tmp/pa/etc/init.d/ && chmod +x /tmp/pa/etc/init.d/pslinkb
-          apk mkpkg \
-            --info "name:pslinkb" \
-            --info "version:${V}-r0" \
-            --info "arch:${ARCH}" \
-            --info "depends:libc librt libpthread" \
-            --info "origin:pslinkb" \
-            --info "maintainer:urlynn" \
-            --files /tmp/pa \
-            --output "${OUT}/pslinkb-${V}-${ARCH}-openwrt.apk"
-
-      - name: Package openwrt.ipk
-        run: |
-          set -e; V="${V#v}"; OUT=/tmp/out; mkdir -p "$OUT"
-          OWRT="/tmp/bins/pslinkb-${ARCH}-openwrt"
-          STREAM="/tmp/deps/stream/${ARCH}-linux-musl/pslinkb-stream"; [ -f "$STREAM" ] || STREAM=""
-          rm -rf /tmp/ipk && mkdir -p /tmp/ipk/usr/bin /tmp/ipk/etc/config /tmp/ipk/etc/init.d /tmp/ipk/CONTROL
-          cp "$OWRT" /tmp/ipk/usr/bin/pslinkb && chmod +x /tmp/ipk/usr/bin/pslinkb
-          [ -n "$STREAM" ] && cp "$STREAM" /tmp/ipk/usr/bin/pslinkb-stream && chmod +x /tmp/ipk/usr/bin/pslinkb-stream
-          cp "$GITHUB_WORKSPACE/openwrt/etc/config/pslinkb" /tmp/ipk/etc/config/
-          cp "$GITHUB_WORKSPACE/openwrt/etc/init.d/pslinkb" /tmp/ipk/etc/init.d/ && chmod +x /tmp/ipk/etc/init.d/pslinkb
-          printf 'Package: pslinkb\nVersion: %s-r0\nArchitecture: %s\nDepends: libc,libpthread\n' "$V" "$ARCH_IPK" > /tmp/ipk/CONTROL/control
-          tar czf /tmp/ctl.tar.gz -C /tmp/ipk/CONTROL .
-          tar czf /tmp/dat.tar.gz -C /tmp/ipk usr/ etc/
-          echo 2.0 > /tmp/db; ar r "${OUT}/pslinkb-${V}-${ARCH}-openwrt.ipk" /tmp/db /tmp/ctl.tar.gz /tmp/dat.tar.gz
-          rm -rf /tmp/ipk /tmp/ctl.tar.gz /tmp/dat.tar.gz /tmp/db
 
       - name: Package bundle (tar.zst)
         run: |
@@ -170,34 +100,6 @@ jobs:
           PORT="/tmp/bins/pslinkb-${ARCH}-portable"
           [ -f "$PORT" ] && cp "$PORT" "${OUT}/pslinkb-${V}-${ARCH}-unknown-linux-musl-portable" && chmod +x "${OUT}/pslinkb-${V}-${ARCH}-unknown-linux-musl-portable" || echo "WARN: no portable"
 
-      - name: Verify IPK
-        run: |
-          set -e
-          V="${V#v}"
-          curl -sL https://downloads.openwrt.org/releases/24.10.4/targets/x86/64/openwrt-24.10.4-x86-64-rootfs.tar.gz -o /tmp/rootfs.tar.gz
-          mkdir -p /tmp/owrt && sudo tar xzf /tmp/rootfs.tar.gz -C /tmp/owrt --exclude='dev/*'
-          sudo mkdir -p /tmp/owrt/tmp /tmp/owrt/dev /tmp/owrt/var/lock
-          IPK=$(ls /tmp/out/pslinkb-${V}-${ARCH}-openwrt.ipk 2>/dev/null | head -1)
-          [ -z "$IPK" ] && echo "ERROR: no IPK found" && exit 1
-          sudo cp "$IPK" /tmp/owrt/tmp/test.ipk
-          sudo chroot /tmp/owrt /bin/opkg install /tmp/test.ipk --force-overwrite
-          sudo chroot /tmp/owrt /usr/bin/pslinkb --version
-          echo "IPK OK"
-
-      - name: Verify APK
-        run: |
-          set -e
-          V="${V#v}"
-          curl -sL https://downloads.openwrt.org/snapshots/targets/x86/64/openwrt-x86-64-rootfs.tar.gz -o /tmp/rootfs.tar.gz
-          mkdir -p /tmp/owrt && sudo tar xzf /tmp/rootfs.tar.gz -C /tmp/owrt --exclude='dev/*'
-          sudo mkdir -p /tmp/owrt/tmp /tmp/owrt/dev
-          APK=$(ls /tmp/out/pslinkb-${V}-${ARCH}-openwrt.apk 2>/dev/null | head -1)
-          [ -z "$APK" ] && echo "ERROR: no APK found" && exit 1
-          sudo cp "$APK" /tmp/owrt/tmp/test.apk
-          sudo chroot /tmp/owrt /usr/bin/sh -c "apk add --allow-untrusted /tmp/test.apk"
-          sudo chroot /tmp/owrt /usr/bin/pslinkb --version
-          echo "APK OK"
-
       - name: List output
         run: |
           V="${V#v}"; ls -la /tmp/out/ && echo "${ARCH} done"
@@ -215,7 +117,6 @@ jobs:
       V: ${{ inputs.version }}
       ARCH: aarch64
       DEB_ARCH: arm64
-      ARCH_IPK: aarch64_generic
     steps:
       - uses: actions/checkout@v4
       - name: Download linux-aarch64 artifact
@@ -241,24 +142,6 @@ jobs:
       - name: Install zstd
         run: sudo apt-get install -y zstd
 
-      - name: Install OpenWRT SDK apk tool
-        run: |
-          sudo apt-get install -y zstd qemu-user-static
-          BASE="https://downloads.openwrt.org/snapshots/targets/x86/64"
-          SDK_NAME=$(curl -sL "$BASE/" | grep -oP 'openwrt-sdk[^"]*tar\.zst' | head -1)
-          [ -n "$SDK_NAME" ] || { echo "ERROR: SDK not found at $BASE/"; curl -sL "$BASE/"; exit 1; }
-          echo "SDK: $SDK_NAME"
-          curl -sL "$BASE/$SDK_NAME" -o /tmp/sdk.tar.zst
-          rm -rf /tmp/sdk && mkdir -p /tmp/sdk
-          zstd -d /tmp/sdk.tar.zst -o /tmp/sdk.tar
-          tar -xf /tmp/sdk.tar -C /tmp/sdk/
-          SDK_DIR=$(ls -d /tmp/sdk/openwrt-sdk-*)
-          rm -rf /tmp/sdk.tar.zst /tmp/sdk.tar
-          export PATH="$SDK_DIR/staging_dir/host/bin:$PATH"
-          export LD_LIBRARY_PATH="$SDK_DIR/staging_dir/host/lib:$LD_LIBRARY_PATH"
-          file "$SDK_DIR/staging_dir/host/bin/apk"
-          apk --version
-
       - name: Verify stream
         run: |
           set -e
@@ -269,54 +152,6 @@ jobs:
           else
             echo "WARN: no stream"
           fi
-
-      - name: Package openwrt.tar.gz
-        run: |
-          set -e; V="${V#v}"; OUT=/tmp/out; mkdir -p "$OUT"
-          OWRT="/tmp/bins/pslinkb-${ARCH}-openwrt"
-          STREAM="/tmp/deps/stream/${ARCH}-linux-musl/pslinkb-stream"; [ -f "$STREAM" ] || STREAM=""
-          rm -rf /tmp/pkg && mkdir -p /tmp/pkg/usr/bin /tmp/pkg/etc/config /tmp/pkg/etc/init.d
-          cp "$OWRT" /tmp/pkg/usr/bin/pslinkb && chmod +x /tmp/pkg/usr/bin/pslinkb
-          [ -n "$STREAM" ] && cp "$STREAM" /tmp/pkg/usr/bin/pslinkb-stream && chmod +x /tmp/pkg/usr/bin/pslinkb-stream
-          cp "$GITHUB_WORKSPACE/openwrt/etc/config/pslinkb" /tmp/pkg/etc/config/
-          cp "$GITHUB_WORKSPACE/openwrt/etc/init.d/pslinkb" /tmp/pkg/etc/init.d/ && chmod +x /tmp/pkg/etc/init.d/pslinkb
-          tar czf "${OUT}/pslinkb-${V}-${ARCH}-openwrt.tar.gz" -C /tmp/pkg usr/ etc/
-
-      - name: Package openwrt.apk (SDK mkpkg v3)
-        run: |
-          set -e; V="${V#v}"; OUT=/tmp/out; mkdir -p "$OUT"
-          OWRT="/tmp/bins/pslinkb-${ARCH}-openwrt"
-          STREAM="/tmp/deps/stream/${ARCH}-linux-musl/pslinkb-stream"; [ -f "$STREAM" ] || STREAM=""
-          rm -rf /tmp/pa && mkdir -p /tmp/pa/usr/bin /tmp/pa/etc/config /tmp/pa/etc/init.d
-          cp "$OWRT" /tmp/pa/usr/bin/pslinkb && chmod +x /tmp/pa/usr/bin/pslinkb
-          [ -n "$STREAM" ] && cp "$STREAM" /tmp/pa/usr/bin/pslinkb-stream && chmod +x /tmp/pa/usr/bin/pslinkb-stream
-          cp "$GITHUB_WORKSPACE/openwrt/etc/config/pslinkb" /tmp/pa/etc/config/
-          cp "$GITHUB_WORKSPACE/openwrt/etc/init.d/pslinkb" /tmp/pa/etc/init.d/ && chmod +x /tmp/pa/etc/init.d/pslinkb
-          apk mkpkg \
-            --info "name:pslinkb" \
-            --info "version:${V}-r0" \
-            --info "arch:${ARCH}" \
-            --info "depends:libc librt libpthread" \
-            --info "origin:pslinkb" \
-            --info "maintainer:urlynn" \
-            --files /tmp/pa \
-            --output "${OUT}/pslinkb-${V}-${ARCH}-openwrt.apk"
-
-      - name: Package openwrt.ipk
-        run: |
-          set -e; V="${V#v}"; OUT=/tmp/out; mkdir -p "$OUT"
-          OWRT="/tmp/bins/pslinkb-${ARCH}-openwrt"
-          STREAM="/tmp/deps/stream/${ARCH}-linux-musl/pslinkb-stream"; [ -f "$STREAM" ] || STREAM=""
-          rm -rf /tmp/ipk && mkdir -p /tmp/ipk/usr/bin /tmp/ipk/etc/config /tmp/ipk/etc/init.d /tmp/ipk/CONTROL
-          cp "$OWRT" /tmp/ipk/usr/bin/pslinkb && chmod +x /tmp/ipk/usr/bin/pslinkb
-          [ -n "$STREAM" ] && cp "$STREAM" /tmp/ipk/usr/bin/pslinkb-stream && chmod +x /tmp/ipk/usr/bin/pslinkb-stream
-          cp "$GITHUB_WORKSPACE/openwrt/etc/config/pslinkb" /tmp/ipk/etc/config/
-          cp "$GITHUB_WORKSPACE/openwrt/etc/init.d/pslinkb" /tmp/ipk/etc/init.d/ && chmod +x /tmp/ipk/etc/init.d/pslinkb
-          printf 'Package: pslinkb\nVersion: %s-r0\nArchitecture: %s\nDepends: libc,libpthread\n' "$V" "$ARCH_IPK" > /tmp/ipk/CONTROL/control
-          tar czf /tmp/ctl.tar.gz -C /tmp/ipk/CONTROL .
-          tar czf /tmp/dat.tar.gz -C /tmp/ipk usr/ etc/
-          echo 2.0 > /tmp/db; ar r "${OUT}/pslinkb-${V}-${ARCH}-openwrt.ipk" /tmp/db /tmp/ctl.tar.gz /tmp/dat.tar.gz
-          rm -rf /tmp/ipk /tmp/ctl.tar.gz /tmp/dat.tar.gz /tmp/db
 
       - name: Package bundle (tar.zst)
         run: |
@@ -358,34 +193,6 @@ jobs:
           PORT="/tmp/bins/pslinkb-${ARCH}-portable"
           [ -f "$PORT" ] && cp "$PORT" "${OUT}/pslinkb-${V}-${ARCH}-unknown-linux-musl-portable" && chmod +x "${OUT}/pslinkb-${V}-${ARCH}-unknown-linux-musl-portable" || echo "WARN: no portable"
 
-      - name: Verify IPK
-        run: |
-          set -e
-          V="${V#v}"
-          curl -sL https://downloads.openwrt.org/releases/24.10.4/targets/armsr/armv8/openwrt-24.10.4-armsr-armv8-rootfs.tar.gz -o /tmp/rootfs.tar.gz
-          mkdir -p /tmp/owrt && sudo tar xzf /tmp/rootfs.tar.gz -C /tmp/owrt --exclude='dev/*'
-          sudo mkdir -p /tmp/owrt/tmp /tmp/owrt/dev /tmp/owrt/var/lock
-          IPK=$(ls /tmp/out/pslinkb-${V}-${ARCH}-openwrt.ipk 2>/dev/null | head -1)
-          [ -z "$IPK" ] && echo "ERROR: no IPK found" && exit 1
-          sudo cp "$IPK" /tmp/owrt/tmp/test.ipk
-          sudo chroot /tmp/owrt /bin/opkg install /tmp/test.ipk --force-overwrite
-          sudo chroot /tmp/owrt /usr/bin/pslinkb --version
-          echo "IPK OK"
-
-      - name: Verify APK
-        run: |
-          set -e
-          V="${V#v}"
-          curl -sL https://downloads.openwrt.org/snapshots/targets/armsr/armv8/openwrt-armsr-armv8-rootfs.tar.gz -o /tmp/rootfs.tar.gz
-          mkdir -p /tmp/owrt && sudo tar xzf /tmp/rootfs.tar.gz -C /tmp/owrt --exclude='dev/*'
-          sudo mkdir -p /tmp/owrt/tmp /tmp/owrt/dev
-          APK=$(ls /tmp/out/pslinkb-${V}-${ARCH}-openwrt.apk 2>/dev/null | head -1)
-          [ -z "$APK" ] && echo "ERROR: no APK found" && exit 1
-          sudo cp "$APK" /tmp/owrt/tmp/test.apk
-          sudo chroot /tmp/owrt /usr/bin/sh -c "apk add --allow-untrusted /tmp/test.apk"
-          sudo chroot /tmp/owrt /usr/bin/pslinkb --version
-          echo "APK OK"
-
       - name: List output
         run: |
           V="${V#v}"; ls -la /tmp/out/ && echo "${ARCH} done"
@@ -393,6 +200,158 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: pkgs-aarch64
+          path: /tmp/out/
+          retention-days: 30
+
+  package-openwrt:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      V: ${{ inputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download build artifacts (both archs)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p /tmp/bins
+          echo "=== x86_64 ==="
+          for rid in $(gh run list --repo ${{ github.repository }} --workflow build.yml --limit 20 --status success --json databaseId -q '.[].databaseId'); do
+            if gh run view $rid --repo ${{ github.repository }} --json jobs -q '[.jobs[] | select(.name == "build-linux-x86_64" and .conclusion == "success")] | length' | grep -qx '[1-9]'; then
+              gh run download $rid --repo ${{ github.repository }} --name linux-x86_64 --dir /tmp/bins
+              echo "x86_64 from $rid" && break
+            fi
+          done
+          echo "=== aarch64 ==="
+          for rid in $(gh run list --repo ${{ github.repository }} --workflow build.yml --limit 20 --status success --json databaseId -q '.[].databaseId'); do
+            if gh run view $rid --repo ${{ github.repository }} --json jobs -q '[.jobs[] | select(.name == "build-linux-aarch64" and .conclusion == "success")] | length' | grep -qx '[1-9]'; then
+              gh run download $rid --repo ${{ github.repository }} --name linux-aarch64 --dir /tmp/bins
+              echo "aarch64 from $rid" && break
+            fi
+          done
+          ls -la /tmp/bins/
+
+      - name: Download deps
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download ${{ inputs.deps-tag }} --repo ${{ github.repository }} -p 'pslinkb-build-deps.tar.gz' -D /tmp/ --clobber || true
+          mkdir -p /tmp/deps && [ -f /tmp/pslinkb-build-deps.tar.gz ] && tar xzf /tmp/pslinkb-build-deps.tar.gz -C /tmp/deps || true
+
+      - name: Install zstd + SDK
+        run: |
+          sudo apt-get install -y zstd
+          BASE="https://downloads.openwrt.org/snapshots/targets/x86/64"
+          SDK_NAME=$(curl -sL "$BASE/" | grep -oP 'openwrt-sdk[^"]*tar\.zst' | head -1)
+          [ -n "$SDK_NAME" ] || { echo "ERROR: SDK not found at $BASE/"; curl -sL "$BASE/"; exit 1; }
+          echo "SDK: $SDK_NAME"
+          curl -sL "$BASE/$SDK_NAME" -o /tmp/sdk.tar.zst
+          rm -rf /tmp/sdk && mkdir -p /tmp/sdk
+          zstd -d /tmp/sdk.tar.zst -o /tmp/sdk.tar
+          tar -xf /tmp/sdk.tar -C /tmp/sdk/
+          SDK_DIR=$(ls -d /tmp/sdk/openwrt-sdk-*)
+          rm -rf /tmp/sdk.tar.zst /tmp/sdk.tar
+          export PATH="$SDK_DIR/staging_dir/host/bin:$PATH"
+          export LD_LIBRARY_PATH="$SDK_DIR/staging_dir/host/lib:$LD_LIBRARY_PATH"
+          file "$SDK_DIR/staging_dir/host/bin/apk"
+          apk --version
+
+      - name: Package x86_64 (tar.gz + apk + ipk)
+        run: |
+          set -e; V="${V#v}"; OUT=/tmp/out; mkdir -p "$OUT"
+          arch=x86_64; ARCH_IPK=x86_64
+          OWRT="/tmp/bins/pslinkb-${arch}-openwrt"
+          STREAM="/tmp/deps/stream/${arch}-linux-musl/pslinkb-stream"; [ -f "$STREAM" ] || STREAM=""
+
+          # tar.gz
+          rm -rf /tmp/pkg && mkdir -p /tmp/pkg/usr/bin /tmp/pkg/etc/config /tmp/pkg/etc/init.d
+          cp "$OWRT" /tmp/pkg/usr/bin/pslinkb && chmod +x /tmp/pkg/usr/bin/pslinkb
+          [ -n "$STREAM" ] && cp "$STREAM" /tmp/pkg/usr/bin/pslinkb-stream && chmod +x /tmp/pkg/usr/bin/pslinkb-stream
+          cp "$GITHUB_WORKSPACE/openwrt/etc/config/pslinkb" /tmp/pkg/etc/config/
+          cp "$GITHUB_WORKSPACE/openwrt/etc/init.d/pslinkb" /tmp/pkg/etc/init.d/ && chmod +x /tmp/pkg/etc/init.d/pslinkb
+          tar czf "${OUT}/pslinkb-${V}-${arch}-openwrt.tar.gz" -C /tmp/pkg usr/ etc/
+
+          # apk
+          apk mkpkg \
+            --info "name:pslinkb" \
+            --info "version:${V}-r0" \
+            --info "arch:${arch}" \
+            --info "depends:libc librt libpthread" \
+            --info "origin:pslinkb" \
+            --info "maintainer:urlynn" \
+            --files /tmp/pkg \
+            --output "${OUT}/pslinkb-${V}-${arch}-openwrt.apk"
+
+          # ipk
+          rm -rf /tmp/ipk && cp -a /tmp/pkg /tmp/ipk && mkdir -p /tmp/ipk/CONTROL
+          printf 'Package: pslinkb\nVersion: %s-r0\nArchitecture: %s\nDepends: libc,libpthread\n' "$V" "$ARCH_IPK" > /tmp/ipk/CONTROL/control
+          tar czf /tmp/ctl.tar.gz -C /tmp/ipk/CONTROL .; rm -rf /tmp/ipk/CONTROL
+          tar czf /tmp/dat.tar.gz -C /tmp/ipk usr/ etc/; echo 2.0 > /tmp/db
+          ar r "${OUT}/pslinkb-${V}-${arch}-openwrt.ipk" /tmp/db /tmp/ctl.tar.gz /tmp/dat.tar.gz
+          rm -rf /tmp/ipk /tmp/pkg /tmp/ctl.tar.gz /tmp/dat.tar.gz /tmp/db
+          echo "x86_64 openwrt done"
+
+      - name: Package aarch64 (tar.gz + apk + ipk)
+        run: |
+          set -e; V="${V#v}"; OUT=/tmp/out; mkdir -p "$OUT"
+          arch=aarch64; ARCH_IPK=aarch64_generic
+          OWRT="/tmp/bins/pslinkb-${arch}-openwrt"
+          STREAM="/tmp/deps/stream/${arch}-linux-musl/pslinkb-stream"; [ -f "$STREAM" ] || STREAM=""
+
+          rm -rf /tmp/pkg && mkdir -p /tmp/pkg/usr/bin /tmp/pkg/etc/config /tmp/pkg/etc/init.d
+          cp "$OWRT" /tmp/pkg/usr/bin/pslinkb && chmod +x /tmp/pkg/usr/bin/pslinkb
+          [ -n "$STREAM" ] && cp "$STREAM" /tmp/pkg/usr/bin/pslinkb-stream && chmod +x /tmp/pkg/usr/bin/pslinkb-stream
+          cp "$GITHUB_WORKSPACE/openwrt/etc/config/pslinkb" /tmp/pkg/etc/config/
+          cp "$GITHUB_WORKSPACE/openwrt/etc/init.d/pslinkb" /tmp/pkg/etc/init.d/ && chmod +x /tmp/pkg/etc/init.d/pslinkb
+          tar czf "${OUT}/pslinkb-${V}-${arch}-openwrt.tar.gz" -C /tmp/pkg usr/ etc/
+
+          apk mkpkg \
+            --info "name:pslinkb" \
+            --info "version:${V}-r0" \
+            --info "arch:${arch}" \
+            --info "depends:libc librt libpthread" \
+            --info "origin:pslinkb" \
+            --info "maintainer:urlynn" \
+            --files /tmp/pkg \
+            --output "${OUT}/pslinkb-${V}-${arch}-openwrt.apk"
+
+          rm -rf /tmp/ipk && cp -a /tmp/pkg /tmp/ipk && mkdir -p /tmp/ipk/CONTROL
+          printf 'Package: pslinkb\nVersion: %s-r0\nArchitecture: %s\nDepends: libc,libpthread\n' "$V" "$ARCH_IPK" > /tmp/ipk/CONTROL/control
+          tar czf /tmp/ctl.tar.gz -C /tmp/ipk/CONTROL .; rm -rf /tmp/ipk/CONTROL
+          tar czf /tmp/dat.tar.gz -C /tmp/ipk usr/ etc/; echo 2.0 > /tmp/db
+          ar r "${OUT}/pslinkb-${V}-${arch}-openwrt.ipk" /tmp/db /tmp/ctl.tar.gz /tmp/dat.tar.gz
+          rm -rf /tmp/ipk /tmp/pkg /tmp/ctl.tar.gz /tmp/dat.tar.gz /tmp/db
+          echo "aarch64 openwrt done"
+
+      - name: Verify IPK + APK (x86_64)
+        run: |
+          set -e; V="${V#v}"; arch=x86_64
+          # IPK
+          curl -sL https://downloads.openwrt.org/releases/24.10.4/targets/x86/64/openwrt-24.10.4-x86-64-rootfs.tar.gz -o /tmp/rootfs.tar.gz
+          mkdir -p /tmp/owrt && sudo tar xzf /tmp/rootfs.tar.gz -C /tmp/owrt --exclude='dev/*'
+          sudo mkdir -p /tmp/owrt/tmp /tmp/owrt/dev /tmp/owrt/var/lock
+          IPK=$(ls /tmp/out/pslinkb-${V}-${arch}-openwrt.ipk 2>/dev/null | head -1)
+          sudo cp "$IPK" /tmp/owrt/tmp/test.ipk
+          sudo chroot /tmp/owrt /bin/opkg install /tmp/test.ipk --force-overwrite
+          sudo chroot /tmp/owrt /usr/bin/pslinkb --version && echo "IPK OK (x86_64)"
+          # APK
+          rm -rf /tmp/owrt && mkdir -p /tmp/owrt
+          curl -sL https://downloads.openwrt.org/snapshots/targets/x86/64/openwrt-x86-64-rootfs.tar.gz -o /tmp/rootfs.tar.gz
+          mkdir -p /tmp/owrt && sudo tar xzf /tmp/rootfs.tar.gz -C /tmp/owrt --exclude='dev/*'
+          sudo mkdir -p /tmp/owrt/tmp /tmp/owrt/dev
+          APK=$(ls /tmp/out/pslinkb-${V}-${arch}-openwrt.apk 2>/dev/null | head -1)
+          sudo cp "$APK" /tmp/owrt/tmp/test.apk
+          sudo chroot /tmp/owrt /usr/bin/sh -c "apk add --allow-untrusted /tmp/test.apk"
+          sudo chroot /tmp/owrt /usr/bin/pslinkb --version && echo "APK OK (x86_64)"
+
+      - name: List output
+        run: |
+          V="${V#v}"; ls -la /tmp/out/ && echo "openwrt done"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pkgs-openwrt
           path: /tmp/out/
           retention-days: 30
 
@@ -624,7 +583,7 @@ jobs:
           printf 'Package: luci-app-pslinkb\nVersion: %s\nArchitecture: all\nDepends: pslinkb\n' "$LVER" > /tmp/li/CONTROL/control
           tar czf /tmp/ctl.tar.gz -C /tmp/li/CONTROL .; rm -rf /tmp/li/CONTROL
           tar czf /tmp/dat.tar.gz -C /tmp/li .; echo 2.0 > /tmp/db
-          tar czf "${OUT}/luci-app-pslinkb-${LVER}.ipk" -C /tmp ctl.tar.gz dat.tar.gz db
+          ar r "${OUT}/luci-app-pslinkb-${LVER}.ipk" /tmp/db /tmp/ctl.tar.gz /tmp/dat.tar.gz
           rm -rf /tmp/li /tmp/lp /tmp/ctl.tar.gz /tmp/dat.tar.gz /tmp/db
           echo "luci-app done"
           ls -la "$OUT/"
@@ -648,7 +607,7 @@ jobs:
           retention-days: 30
 
   release:
-    needs: [package-x86_64, package-aarch64, package-windows, package-macos-aarch64, package-macos-x86_64, package-luci]
+    needs: [package-x86_64, package-aarch64, package-openwrt, package-windows, package-macos-aarch64, package-macos-x86_64, package-luci]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
