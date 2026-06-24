@@ -251,15 +251,14 @@ jobs:
           [ -f /tmp/pslinkb-deps-linux-x86_64.tar.gz ] && tar xzf /tmp/pslinkb-deps-linux-x86_64.tar.gz -C /tmp/deps-x86_64 || true
           [ -f /tmp/pslinkb-deps-linux-aarch64.tar.gz ] && tar xzf /tmp/pslinkb-deps-linux-aarch64.tar.gz -C /tmp/deps-aarch64 || true
 
-      - name: Resolve SDK hash
+      - name: Resolve SDK
         id: sdk
         run: |
           sudo apt-get install -y zstd
-          LINE=$(curl -sL 'https://downloads.openwrt.org/snapshots/targets/x86/64/sha256sums' | awk '/openwrt-sdk/{print;exit}')
-          HASH=$(echo "$LINE" | awk '{print $1}')
-          FILE=$(echo "$LINE" | cut -d'*' -f2 | tr -d ' ')
-          echo "hash=$HASH" >> "$GITHUB_OUTPUT"
+          FILE=$(curl -sL 'https://downloads.openwrt.org/snapshots/targets/x86/64/' | grep -oP 'openwrt-sdk[^"]*tar\.zst' | head -1)
+          HASH=$(curl -sL 'https://downloads.openwrt.org/snapshots/targets/x86/64/sha256sums' | grep -F "$FILE" | awk '{print $1;exit}')
           echo "file=$FILE" >> "$GITHUB_OUTPUT"
+          echo "hash=$HASH" >> "$GITHUB_OUTPUT"
 
       - uses: actions/cache@v4
         id: cache
