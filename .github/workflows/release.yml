@@ -120,9 +120,8 @@ jobs:
       - name: Verify deb
         run: |
           V="${V#v}"; set -e
-          mkdir -p /tmp/dcheck && ar x "/tmp/out/pslinkb-${V}-${ARCH}-debian.deb" --output=/tmp/dcheck
-          tar xzf /tmp/dcheck/data.tar.gz -C /tmp/dcheck
-          /tmp/dcheck/usr/bin/pslinkb --version
+          sudo dpkg -i "/tmp/out/pslinkb-${V}-${ARCH}-debian.deb"
+          pslinkb --version
           echo "deb OK"
 
       - name: Verify arch
@@ -242,9 +241,8 @@ jobs:
       - name: Verify deb
         run: |
           V="${V#v}"; set -e
-          mkdir -p /tmp/dcheck && ar x "/tmp/out/pslinkb-${V}-${ARCH}-debian.deb" --output=/tmp/dcheck
-          tar xzf /tmp/dcheck/data.tar.gz -C /tmp/dcheck
-          /tmp/dcheck/usr/bin/pslinkb --version
+          sudo dpkg -i "/tmp/out/pslinkb-${V}-${ARCH}-debian.deb"
+          pslinkb --version
           echo "deb OK"
 
       - name: Verify arch
