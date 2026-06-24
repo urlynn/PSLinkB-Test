@@ -68,9 +68,8 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          mkdir -p /tmp/pkg/stream/x86_64-linux-musl
-          cp /tmp/ffbuild/bin/pslinkb-stream /tmp/pkg/stream/x86_64-linux-musl/
-          tar czf /tmp/pslinkb-deps-linux-x86_64.tar.gz -C /tmp/pkg .
+          cp /tmp/ffbuild/bin/pslinkb-stream /tmp/pslinkb-stream-linux-x86_64
+          tar czf /tmp/pslinkb-deps-linux-x86_64.tar.gz -C /tmp pslinkb-stream-linux-x86_64
           TAG="build-deps"
           gh release view "$TAG" --repo ${{ github.repository }} 2>/dev/null || \
             gh release create "$TAG" --repo ${{ github.repository }} --title "Build Dependencies" --notes "pslinkb-stream + FFmpeg static libs — CI built"
@@ -127,9 +126,8 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          mkdir -p /tmp/pkg/stream/aarch64-linux-musl
-          cp /tmp/ffbuild/bin/pslinkb-stream /tmp/pkg/stream/aarch64-linux-musl/
-          tar czf /tmp/pslinkb-deps-linux-aarch64.tar.gz -C /tmp/pkg .
+          cp /tmp/ffbuild/bin/pslinkb-stream /tmp/pslinkb-stream-linux-aarch64
+          tar czf /tmp/pslinkb-deps-linux-aarch64.tar.gz -C /tmp pslinkb-stream-linux-aarch64
           TAG="build-deps"
           gh release view "$TAG" --repo ${{ github.repository }} 2>/dev/null || \
             gh release create "$TAG" --repo ${{ github.repository }} --title "Build Dependencies" --notes "pslinkb-stream + FFmpeg static libs — CI built"
@@ -165,10 +163,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          mkdir -p /tmp/pkg/ffbuild/aarch64-macos
-          cp -r /tmp/ffbuild/lib /tmp/pkg/ffbuild/aarch64-macos/
-          cp -r /tmp/ffbuild/include /tmp/pkg/ffbuild/aarch64-macos/
-          tar czf /tmp/pslinkb-deps-macos-aarch64.tar.gz -C /tmp/pkg .
+          tar czf /tmp/pslinkb-deps-macos-aarch64.tar.gz -C /tmp/ffbuild lib/ include/
           TAG="build-deps"
           gh release view "$TAG" --repo ${{ github.repository }} 2>/dev/null || \
             gh release create "$TAG" --repo ${{ github.repository }} --title "Build Dependencies" --notes "pslinkb-stream + FFmpeg static libs — CI built"
@@ -204,10 +199,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          mkdir -p /tmp/pkg/ffbuild/x86_64-macos
-          cp -r /tmp/ffbuild/lib /tmp/pkg/ffbuild/x86_64-macos/
-          cp -r /tmp/ffbuild/include /tmp/pkg/ffbuild/x86_64-macos/
-          tar czf /tmp/pslinkb-deps-macos-x86_64.tar.gz -C /tmp/pkg .
+          tar czf /tmp/pslinkb-deps-macos-x86_64.tar.gz -C /tmp/ffbuild lib/ include/
           TAG="build-deps"
           gh release view "$TAG" --repo ${{ github.repository }} 2>/dev/null || \
             gh release create "$TAG" --repo ${{ github.repository }} --title "Build Dependencies" --notes "pslinkb-stream + FFmpeg static libs — CI built"
@@ -277,9 +269,8 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          mkdir -p /tmp/pkg/stream/x86_64-windows
-          cp /tmp/ffbuild/bin/pslinkb-stream.exe /tmp/pkg/stream/x86_64-windows/
-          tar czf /tmp/pslinkb-deps-windows-x86_64.tar.gz -C /tmp/pkg .
+          cp /tmp/ffbuild/bin/pslinkb-stream.exe /tmp/pslinkb-stream-windows-x86_64.exe
+          tar czf /tmp/pslinkb-deps-windows-x86_64.tar.gz -C /tmp pslinkb-stream-windows-x86_64.exe
           TAG="build-deps"
           gh release view "$TAG" --repo ${{ github.repository }} 2>/dev/null || \
             gh release create "$TAG" --repo ${{ github.repository }} --title "Build Dependencies" --notes "pslinkb-stream + FFmpeg static libs — CI built"
@@ -326,9 +317,8 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          mkdir -p /tmp/pkg/stream/aarch64-windows
-          cp /tmp/ffbuild/bin/pslinkb-stream.exe /tmp/pkg/stream/aarch64-windows/
-          tar czf /tmp/pslinkb-deps-windows-aarch64.tar.gz -C /tmp/pkg .
+          cp /tmp/ffbuild/bin/pslinkb-stream.exe /tmp/pslinkb-stream-windows-aarch64.exe
+          tar czf /tmp/pslinkb-deps-windows-aarch64.tar.gz -C /tmp pslinkb-stream-windows-aarch64.exe
           TAG="build-deps"
           gh release view "$TAG" --repo ${{ github.repository }} 2>/dev/null || \
             gh release create "$TAG" --repo ${{ github.repository }} --title "Build Dependencies" --notes "pslinkb-stream + FFmpeg static libs — CI built"
