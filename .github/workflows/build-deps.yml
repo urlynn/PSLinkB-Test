@@ -1,4 +1,4 @@
-name: Build Deps (stream + ffmpeg)
+name: Build Deps - FFI + stream
 
 on:
   workflow_dispatch:
