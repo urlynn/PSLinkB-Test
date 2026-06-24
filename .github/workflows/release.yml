@@ -99,7 +99,8 @@ jobs:
           V="${V#v}"; ls -la /tmp/out/ && echo "${ARCH} done"
       - name: Verify bundle
         run: |
-          V="${V#v}"; set -e
+          set -e; V="${V#v}"
+          mkdir -p /tmp/bcheck
           tar --zstd -xf "/tmp/out/pslinkb-${V}-${ARCH}-unknown-linux-musl-bundle.tar.zst" -C /tmp/bcheck
           /tmp/bcheck/pslinkb --version && echo "bundle OK"
       - name: Verify deb
@@ -198,7 +199,8 @@ jobs:
           V="${V#v}"; ls -la /tmp/out/ && echo "${ARCH} done"
       - name: Verify bundle
         run: |
-          V="${V#v}"; set -e
+          set -e; V="${V#v}"
+          mkdir -p /tmp/bcheck
           tar --zstd -xf "/tmp/out/pslinkb-${V}-${ARCH}-unknown-linux-musl-bundle.tar.zst" -C /tmp/bcheck
           /tmp/bcheck/pslinkb --version && echo "bundle OK"
       - name: Verify deb
@@ -579,6 +581,7 @@ jobs:
       - name: Package IPK (x86_64 + aarch64)
         run: |
           set -e; V="${V#v}"; OUT=/tmp/out; mkdir -p "$OUT"
+          SDK_S="/tmp/openwrt-sdk/sdk-opkg-x86_64/sdk/scripts/ipkg-build"
           for arch in x86_64 aarch64; do
             ARCH_IPK="$arch"; [ "$arch" = "aarch64" ] && ARCH_IPK=aarch64_generic
             OWRT="/tmp/bins/pslinkb-${arch}-openwrt"
@@ -589,11 +592,9 @@ jobs:
             cp "$GITHUB_WORKSPACE/openwrt/etc/config/pslinkb" /tmp/ipk/etc/config/
             cp "$GITHUB_WORKSPACE/openwrt/etc/init.d/pslinkb" /tmp/ipk/etc/init.d/ && chmod +x /tmp/ipk/etc/init.d/pslinkb
             printf 'Package: pslinkb\nVersion: %s\nArchitecture: %s\nDepends: libc,libpthread\n' "$V" "$ARCH_IPK" > /tmp/ipk/CONTROL/control
-            tar czf /tmp/ctl.tar.gz -C /tmp/ipk/CONTROL .
-            tar czf /tmp/dat.tar.gz -C /tmp/ipk usr/ etc/
-            echo 2.0 > /tmp/db
-            ar r "${OUT}/pslinkb-${V}-${arch}-openwrt.ipk" /tmp/db /tmp/ctl.tar.gz /tmp/dat.tar.gz
-            rm -rf /tmp/ipk /tmp/ctl.tar.gz /tmp/dat.tar.gz /tmp/db
+            "$SDK_S" /tmp/ipk /tmp/ipk-out
+            mv /tmp/ipk-out/*.ipk "${OUT}/pslinkb-${V}-${arch}-openwrt.ipk"
+            rm -rf /tmp/ipk /tmp/ipk-out
           done
           ls -la "$OUT/"
       - uses: actions/upload-artifact@v4
