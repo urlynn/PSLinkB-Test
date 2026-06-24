@@ -1,0 +1,91 @@
+name: Setup SDK Tools
+
+on:
+  workflow_dispatch:
+
+env:
+  ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: 'true'
+
+permissions:
+  contents: write
+
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - run: sudo apt-get install -y zstd
+
+      - name: Resolve SDKs
+        id: sdk
+        run: |
+          resolve() {
+            F=$(curl -sL "$1" | grep -oP 'openwrt-sdk[^"]*tar\.zst' | head -1)
+            H=$(curl -sL "$2" | grep -F "$F" | awk '{print $1;exit}')
+            echo "${3}_file=$F" >> "$GITHUB_OUTPUT"
+            echo "${3}_hash=$H" >> "$GITHUB_OUTPUT"
+          }
+          resolve 'https://downloads.openwrt.org/releases/25.12.4/targets/x86/64/' \
+                  'https://downloads.openwrt.org/releases/25.12.4/targets/x86/64/sha256sums' apk
+          resolve 'https://downloads.openwrt.org/releases/24.10.7/targets/x86/64/' \
+                  'https://downloads.openwrt.org/releases/24.10.7/targets/x86/64/sha256sums' opkg
+
+      - uses: actions/cache@v4
+        id: cache-apk
+        with:
+          path: /tmp/sdk-cache
+          key: sdk-apk-${{ steps.sdk.outputs.apk_hash }}
+
+      - uses: actions/cache@v4
+        id: cache-opkg
+        with:
+          path: /tmp/sdk-cache
+          key: sdk-opkg-${{ steps.sdk.outputs.opkg_hash }}
+
+      - name: Download SDKs
+        run: |
+          mkdir -p /tmp/sdk-cache
+          dl() { [ -f "/tmp/sdk-cache/$4.tar.zst" ] && return; curl -L --retry 3 -o "/tmp/sdk-cache/$4.tar.zst" "$1/$2"; echo "$3  /tmp/sdk-cache/$4.tar.zst" | sha256sum -c; }
+          dl 'https://downloads.openwrt.org/releases/25.12.4/targets/x86/64' \
+             '${{ steps.sdk.outputs.apk_file }}' '${{ steps.sdk.outputs.apk_hash }}' sdk-apk
+          dl 'https://downloads.openwrt.org/releases/24.10.7/targets/x86/64' \
+             '${{ steps.sdk.outputs.opkg_file }}' '${{ steps.sdk.outputs.opkg_hash }}' sdk-opkg
+
+      - name: Extract APK tools (.apk.bin + runtime)
+        run: |
+          rm -rf /tmp/extract-apk && mkdir /tmp/extract-apk
+          zstd -d /tmp/sdk-cache/sdk-apk.tar.zst -o /tmp/extract-apk/sdk.tar
+          tar -xf /tmp/extract-apk/sdk.tar -C /tmp/extract-apk/
+          SDK=$(ls -d /tmp/extract-apk/openwrt-sdk-*)
+          mkdir -p /tmp/tools-apk/bin /tmp/tools-apk/lib
+          cp "$SDK/staging_dir/host/bin/.apk.bin" /tmp/tools-apk/bin/
+          cp "$SDK/staging_dir/host/lib/runas.so" /tmp/tools-apk/lib/
+          cp "$SDK/staging_dir/host/lib/ld-linux-x86-64.so.2" /tmp/tools-apk/lib/
+          tar czf /tmp/openwrt-apk-tools.tar.gz -C /tmp/tools-apk .
+          ls -lh /tmp/openwrt-apk-tools.tar.gz
+          rm -rf /tmp/extract-apk /tmp/tools-apk
+
+      - name: Extract IPK tools (ipkg-build)
+        run: |
+          rm -rf /tmp/extract-opkg && mkdir /tmp/extract-opkg
+          zstd -d /tmp/sdk-cache/sdk-opkg.tar.zst -o /tmp/extract-opkg/sdk.tar
+          tar -xf /tmp/extract-opkg/sdk.tar -C /tmp/extract-opkg/
+          SDK=$(ls -d /tmp/extract-opkg/openwrt-sdk-*)
+          mkdir -p /tmp/tools-opkg/bin
+          cp "$SDK/scripts/ipkg-build" /tmp/tools-opkg/bin/
+          tar czf /tmp/openwrt-opkg-tools.tar.gz -C /tmp/tools-opkg .
+          ls -lh /tmp/openwrt-opkg-tools.tar.gz
+          rm -rf /tmp/extract-opkg /tmp/tools-opkg
+
+      - name: Upload to build-deps Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="build-deps"
+          gh release view "$TAG" --repo ${{ github.repository }} 2>/dev/null || \
+            gh release create "$TAG" --repo ${{ github.repository }} --title "Build Dependencies" --notes "pslinkb deps"
+          gh release upload "$TAG" \
+            /tmp/openwrt-apk-tools.tar.gz \
+            /tmp/openwrt-opkg-tools.tar.gz \
+            --repo ${{ github.repository }} --clobber
+          echo "Uploaded to $TAG"
