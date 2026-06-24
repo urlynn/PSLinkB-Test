@@ -357,13 +357,15 @@ jobs:
             tar -xf "/tmp/openwrt-sdk/$1/sdk.tar" -C "/tmp/openwrt-sdk/$1/"
             mv "/tmp/openwrt-sdk/$1"/openwrt-sdk-* "/tmp/openwrt-sdk/$1/sdk"
             DIR="/tmp/openwrt-sdk/$1/sdk"
-            [ -f "$DIR/staging_dir/host/bin/.apk.bin" ] || { echo "ERROR: SDK not found at $DIR"; exit 1; }
+            [ -f "$DIR/staging_dir/host/bin/.apk.bin" ] || [ -f "$DIR/staging_dir/host/bin/apk" ] || { echo "ERROR: SDK not found at $DIR"; ls "$DIR/staging_dir/host/bin/" 2>/dev/null; exit 1; }
             cat > "/usr/local/bin/$2" << EOF
           #!/bin/sh
+          BIN=$DIR/staging_dir/host/bin/.apk.bin
+          [ -f "\$BIN" ] || BIN=$DIR/staging_dir/host/bin/apk
           LD_PRELOAD=$DIR/staging_dir/host/lib/runas.so \
           exec $DIR/staging_dir/host/lib/ld-linux-x86-64.so.2 \
             --library-path $DIR/staging_dir/host/lib \
-            $DIR/staging_dir/host/bin/.apk.bin "\$@"
+            \$BIN "\$@"
           EOF
             chmod +x "/usr/local/bin/$2"
           }
