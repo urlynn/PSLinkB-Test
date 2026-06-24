@@ -711,12 +711,12 @@ jobs:
           DIR=/tmp/openwrt-sdk/sdk-apk-x86_64/sdk
           [ -f "$DIR/staging_dir/host/bin/.apk.bin" ] || { echo "ERROR: apk not found"; exit 1; }
           cat > /usr/local/bin/openwrt-apk << EOF
-#!/bin/sh
-LD_PRELOAD=$DIR/staging_dir/host/lib/runas.so \
-exec $DIR/staging_dir/host/lib/ld-linux-x86-64.so.2 \
-  --library-path $DIR/staging_dir/host/lib \
-  $DIR/staging_dir/host/bin/.apk.bin "\$@"
-EOF
+          #!/bin/sh
+          LD_PRELOAD=$DIR/staging_dir/host/lib/runas.so \
+          exec $DIR/staging_dir/host/lib/ld-linux-x86-64.so.2 \
+            --library-path $DIR/staging_dir/host/lib \
+            $DIR/staging_dir/host/bin/.apk.bin "\$@"
+          EOF
           chmod +x /usr/local/bin/openwrt-apk
           openwrt-apk --version
       - name: Package luci-app
