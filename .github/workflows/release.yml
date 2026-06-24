@@ -245,11 +245,9 @@ jobs:
           for f in pslinkb-deps-linux-x86_64.tar.gz pslinkb-deps-linux-aarch64.tar.gz; do
             gh release download ${{ inputs.deps-tag }} --repo ${{ github.repository }} -p "$f" -D /tmp/ --clobber || true
           done
-          for f in /tmp/pslinkb-deps-linux-*.tar.gz; do
-            base=$(basename "$f" .tar.gz)
-            mkdir -p "/tmp/${base}"
-            [ -f "$f" ] && tar xzf "$f" -C "/tmp/${base}" || true
-          done
+          mkdir -p /tmp/deps-x86_64 /tmp/deps-aarch64
+          [ -f /tmp/pslinkb-deps-linux-x86_64.tar.gz ] && tar xzf /tmp/pslinkb-deps-linux-x86_64.tar.gz -C /tmp/deps-x86_64 || true
+          [ -f /tmp/pslinkb-deps-linux-aarch64.tar.gz ] && tar xzf /tmp/pslinkb-deps-linux-aarch64.tar.gz -C /tmp/deps-aarch64 || true
 
       - name: Install zstd + SDK
         run: |
@@ -274,7 +272,7 @@ jobs:
           set -e; V="${V#v}"; OUT=/tmp/out; mkdir -p "$OUT"
           arch=x86_64; ARCH_IPK=x86_64
           OWRT="/tmp/bins/pslinkb-${arch}-openwrt"
-          STREAM="/tmp/pslinkb-deps-linux-x86_64/stream/pslinkb-stream"; [ -f "$STREAM" ] || STREAM=""
+          STREAM="/tmp/deps-x86_64/stream/pslinkb-stream"; [ -f "$STREAM" ] || STREAM=""
 
           # tar.gz
           rm -rf /tmp/pkg && mkdir -p /tmp/pkg/usr/bin /tmp/pkg/etc/config /tmp/pkg/etc/init.d
@@ -309,7 +307,7 @@ jobs:
           set -e; V="${V#v}"; OUT=/tmp/out; mkdir -p "$OUT"
           arch=aarch64; ARCH_IPK=aarch64_generic
           OWRT="/tmp/bins/pslinkb-${arch}-openwrt"
-          STREAM="/tmp/pslinkb-deps-linux-aarch64/stream/pslinkb-stream"; [ -f "$STREAM" ] || STREAM=""
+          STREAM="/tmp/deps-aarch64/stream/pslinkb-stream"; [ -f "$STREAM" ] || STREAM=""
 
           rm -rf /tmp/pkg && mkdir -p /tmp/pkg/usr/bin /tmp/pkg/etc/config /tmp/pkg/etc/init.d
           cp "$OWRT" /tmp/pkg/usr/bin/pslinkb && chmod +x /tmp/pkg/usr/bin/pslinkb
