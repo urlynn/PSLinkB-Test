@@ -16,6 +16,9 @@ on:
 permissions:
   contents: write
 
+env:
+  ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: 'true'
+
 jobs:
   package-x86_64:
     runs-on: ubuntu-latest
