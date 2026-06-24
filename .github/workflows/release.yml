@@ -283,11 +283,11 @@ jobs:
             echo "$3  /tmp/sdk-cache/$4.tar.zst" | sha256sum -c
           }
           download 'https://downloads.openwrt.org/snapshots/targets/x86/64' \
-                   '${{ steps.sdk.outputs.snap_file }}' '${{ steps.sdk.outputs.snap_hash }}' snap
+                   '${{ steps.sdk.outputs.snap_file }}' '${{ steps.sdk.outputs.snap_hash }}' openwrt-sdk-snapshots-x86_64
           download 'https://downloads.openwrt.org/releases/24.10.7/targets/x86/64' \
-                   '${{ steps.sdk.outputs.ipk_x86_file }}' '${{ steps.sdk.outputs.ipk_x86_hash }}' ipk-x86
+                   '${{ steps.sdk.outputs.ipk_x86_file }}' '${{ steps.sdk.outputs.ipk_x86_hash }}' openwrt-sdk-2410-x86_64
           download 'https://downloads.openwrt.org/releases/24.10.7/targets/armsr/armv8' \
-                   '${{ steps.sdk.outputs.ipk_armsr_file }}' '${{ steps.sdk.outputs.ipk_armsr_hash }}' ipk-armsr
+                   '${{ steps.sdk.outputs.ipk_armsr_file }}' '${{ steps.sdk.outputs.ipk_armsr_hash }}' openwrt-sdk-2410-armsr
 
       - name: Setup SDKs
         run: |
@@ -305,11 +305,11 @@ jobs:
           EOF
             chmod +x "/usr/local/bin/$2"
           }
-          setup snap openwrt-apk
+          setup openwrt-sdk-snapshots-x86_64 openwrt-apk
           openwrt-apk --version
-          setup ipk-x86 openwrt-apk-ipk-x86
+          setup openwrt-sdk-2410-x86_64 openwrt-apk-ipk-x86
           openwrt-apk-ipk-x86 --version
-          setup ipk-armsr openwrt-apk-ipk-armsr
+          setup openwrt-sdk-2410-armsr openwrt-apk-ipk-armsr
           openwrt-apk-ipk-armsr --version
 
       - name: Package x86_64 (tar.gz + apk + ipk)
