@@ -1,6 +1,6 @@
 #!/usr/bin/env fish
 # build-deps.fish — 全平台 stream + FFmpeg libs 编译与打包
-# Usage: fish scripts/build-deps.fish [--upload]
+# Usage: fish scripts/build-deps.fish
 #   --upload  构建完成后上传到 build-deps release tag
 #
 # 流程:
@@ -8,7 +8,7 @@
 #   [2] 触发 build-deps.yml GitHub Action → 编译 macOS + Windows
 #   [3] 等待 Action 完成 → 下载 artifacts
 #   [4] 整理产物 → 打包 pslinkb-build-deps.tar.zst
-#   [5] --upload: 上传到 GitHub Release (tag: build-deps)
+#   [5] 上传到 GitHub Release (tag: build-deps)
 
 set -g GENTOO "root@192.168.1.11"
 set -g GENTOO_PROJ "/root/PSLinkB-Dev"
@@ -17,10 +17,7 @@ set -g REPO "urlynn/PSLinkB-Test"
 set -g WF "build-deps.yml"
 set -g TAG "build-deps"
 
-set -g DO_UPLOAD false
-for arg in $argv
-    test "$arg" = "--upload" && set DO_UPLOAD true
-end
+set -g DO_UPLOAD true
 
 echo "══════════════════════════════════════════"
 echo " PSLinkB Build Deps — 全平台 deps 打包"
