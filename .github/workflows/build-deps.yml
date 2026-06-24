@@ -17,21 +17,20 @@ jobs:
   linux-x86_64:
     if: ${{ inputs.platform == 'all' || inputs.platform == 'linux-x86_64' }}
     runs-on: ubuntu-latest
+    container: alpine:latest
     timeout-minutes: 10
     env:
       ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: 'true'
     steps:
+      - run: apk add build-base git nasm
       - uses: actions/checkout@v4
-      - run: sudo apt-get install -y musl-tools
       - name: Build FFmpeg + stream
         run: |
-          cp "$GITHUB_WORKSPACE/src/stream_copy.c" /tmp/
+          cp src/stream_copy.c /tmp/
           git clone --branch n8.0 --depth 1 https://github.com/FFmpeg/FFmpeg.git /tmp/ffmpeg
           cd /tmp/ffmpeg
-          CC=musl-gcc ./configure \
+          ./configure \
             --prefix=/tmp/ffbuild \
-            --extra-cflags="-U_FORTIFY_SOURCE" \
-            --disable-x86asm \
             --enable-static --disable-shared \
             --disable-everything --enable-small --enable-ffmpeg \
             --enable-protocol=tcp,rtmp --enable-demuxer=flv --enable-muxer=flv \
@@ -41,7 +40,7 @@ jobs:
             --disable-iconv --disable-lzma --disable-bzlib --disable-zlib --disable-runtime-cpudetect
           make -j$(nproc) && make install
           mkdir -p /tmp/ffbuild/bin
-          musl-gcc -O2 -static -U_FORTIFY_SOURCE \
+          gcc -O2 -static \
             /tmp/stream_copy.c \
             -I/tmp/ffbuild/include -L/tmp/ffbuild/lib \
             -lavformat -lavcodec -lavutil \
@@ -52,7 +51,7 @@ jobs:
           "$BIN" --version
           file "$BIN" | grep -q 'statically linked' || { echo "ERROR: not static"; exit 1; }
           strings "$BIN" | grep -c GLIBC | grep -qx 0 || { echo "ERROR: linked against glibc"; exit 1; }
-          echo "linux-X OK"
+          echo "linux-x86_64 OK"
       - uses: actions/upload-artifact@v4
         with:
           name: linux-x86_64
@@ -61,18 +60,19 @@ jobs:
   linux-aarch64:
     if: ${{ inputs.platform == 'all' || inputs.platform == 'linux-aarch64' }}
     runs-on: ubuntu-24.04-arm
+    container: arm64v8/alpine:latest
     timeout-minutes: 10
     env:
       ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: 'true'
     steps:
+      - run: apk add build-base git
       - uses: actions/checkout@v4
-      - run: sudo apt-get install -y musl-tools
       - name: Build FFmpeg + stream
         run: |
-          cp "$GITHUB_WORKSPACE/src/stream_copy.c" /tmp/
+          cp src/stream_copy.c /tmp/
           git clone --branch n8.0 --depth 1 https://github.com/FFmpeg/FFmpeg.git /tmp/ffmpeg
           cd /tmp/ffmpeg
-          CC=musl-gcc ./configure \
+          ./configure \
             --prefix=/tmp/ffbuild \
             --enable-static --disable-shared \
             --disable-everything --enable-small --enable-ffmpeg \
@@ -83,7 +83,7 @@ jobs:
             --disable-iconv --disable-lzma --disable-bzlib --disable-zlib --disable-runtime-cpudetect
           make -j$(nproc) && make install
           mkdir -p /tmp/ffbuild/bin
-          musl-gcc -O2 -static -U_FORTIFY_SOURCE \
+          gcc -O2 -static \
             /tmp/stream_copy.c \
             -I/tmp/ffbuild/include -L/tmp/ffbuild/lib \
             -lavformat -lavcodec -lavutil \
@@ -289,7 +289,6 @@ jobs:
         run: |
           set -e
           OUT=/tmp/out; rm -rf "$OUT" && mkdir -p "$OUT"
-          # Linux stream
           for arch in x86_64 aarch64; do
             SRC="/tmp/deps/linux-${arch}/pslinkb-stream"
             if [ -f "$SRC" ]; then
@@ -298,7 +297,6 @@ jobs:
               echo "  linux-${arch} ✓"
             fi
           done
-          # macOS ffbuild
           for arch in aarch64 x86_64; do
             if [ -d "/tmp/deps/macos-${arch}/lib" ]; then
               mkdir -p "$OUT/ffbuild/${arch}-macos"
@@ -307,7 +305,6 @@ jobs:
               echo "  macos-${arch} ffbuild ✓"
             fi
           done
-          # Windows stream
           for arch in x86_64 aarch64; do
             SRC="/tmp/deps/windows-${arch}/pslinkb-stream.exe"
             if [ -f "$SRC" ]; then
@@ -316,11 +313,9 @@ jobs:
               echo "  windows-${arch} ✓"
             fi
           done
-          # Package
           PKG="/tmp/pslinkb-build-deps.tar.gz"
           tar czf "$PKG" -C "$OUT" stream/ ffbuild/
           ls -lh "$PKG"
-          # Upload
           TAG="build-deps"
           gh release delete "$TAG" --repo ${{ github.repository }} -y 2>&1 || true
           gh release create "$TAG" "$PKG" --repo ${{ github.repository }} --title "Build Dependencies" --notes "pslinkb-stream + FFmpeg static libs — CI built"
