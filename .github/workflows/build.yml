@@ -35,6 +35,11 @@ jobs:
         run: cargo build --release --target x86_64-unknown-linux-musl --features cli,channel-mpsc,external-ffmpeg,dns-redirect && cp target/x86_64-unknown-linux-musl/release/pslinkb /tmp/pslinkb-x86_64-bundle
       - name: Build portable (external, same as bundle, renamed)
         run: cargo build --release --target x86_64-unknown-linux-musl --features cli,channel-mpsc,external-ffmpeg,dns-redirect && cp target/x86_64-unknown-linux-musl/release/pslinkb /tmp/pslinkb-x86_64-portable
+      - name: Verify
+        run: |
+          /tmp/pslinkb-x86_64-openwrt --version
+          /tmp/pslinkb-x86_64-bundle --version
+          echo "linux-x86_64 OK"
       - uses: actions/upload-artifact@v4
         with:
           name: linux-x86_64
@@ -57,6 +62,11 @@ jobs:
         run: cargo build --release --target aarch64-unknown-linux-musl --features cli,channel-mpsc,external-ffmpeg,dns-redirect && cp target/aarch64-unknown-linux-musl/release/pslinkb /tmp/pslinkb-aarch64-bundle
       - name: Build portable (external, same as bundle, renamed)
         run: cargo build --release --target aarch64-unknown-linux-musl --features cli,channel-mpsc,external-ffmpeg,dns-redirect && cp target/aarch64-unknown-linux-musl/release/pslinkb /tmp/pslinkb-aarch64-portable
+      - name: Verify
+        run: |
+          /tmp/pslinkb-aarch64-openwrt --version
+          /tmp/pslinkb-aarch64-bundle --version
+          echo "linux-aarch64 OK"
       - uses: actions/upload-artifact@v4
         with:
           name: linux-aarch64
@@ -76,6 +86,10 @@ jobs:
         run: |
           cargo build --release --target x86_64-pc-windows-gnu --features cli,channel-broadcast,external-ffmpeg,dns-redirect
           cp target/x86_64-pc-windows-gnu/release/pslinkb.exe pslinkb-x86_64-windows.exe
+      - name: Verify
+        run: |
+          ./pslinkb-x86_64-windows.exe --version
+          echo "windows-x86_64 OK"
       - uses: actions/upload-artifact@v4
         with:
           name: windows-x86_64
@@ -111,6 +125,10 @@ jobs:
         run: |
           cargo build --release --features "cli,channel-broadcast,ffi-ffmpeg,dns-redirect"
           cp target/release/pslinkb /tmp/pslinkb-aarch64-macos
+      - name: Verify
+        run: |
+          /tmp/pslinkb-aarch64-macos --version
+          echo "macOS aarch64 OK"
       - uses: actions/upload-artifact@v4
         with:
           name: macos-aarch64
@@ -146,6 +164,10 @@ jobs:
         run: |
           cargo build --release --features "cli,channel-broadcast,ffi-ffmpeg,dns-redirect"
           cp target/release/pslinkb /tmp/pslinkb-x86_64-macos
+      - name: Verify
+        run: |
+          /tmp/pslinkb-x86_64-macos --version
+          echo "macOS x86_64 OK"
       - uses: actions/upload-artifact@v4
         with:
           name: macos-x86_64
