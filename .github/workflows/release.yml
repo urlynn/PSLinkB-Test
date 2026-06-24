@@ -24,6 +24,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
+      ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: 'true'
       V: ${{ inputs.version }}
       ARCH: x86_64
       DEB_ARCH: amd64
@@ -117,6 +118,7 @@ jobs:
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 10
     env:
+      ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: 'true'
       V: ${{ inputs.version }}
       ARCH: aarch64
       DEB_ARCH: arm64
@@ -210,6 +212,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
+      ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: 'true'
       V: ${{ inputs.version }}
     steps:
       - uses: actions/checkout@v4
@@ -401,6 +404,7 @@ jobs:
     runs-on: windows-latest
     timeout-minutes: 5
     env:
+      ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: 'true'
       V: ${{ inputs.version }}
     steps:
       - name: Download windows artifact
@@ -467,6 +471,7 @@ jobs:
     runs-on: macos-26
     timeout-minutes: 5
     env:
+      ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: 'true'
       V: ${{ inputs.version }}
       ARCH: aarch64
     steps:
@@ -522,6 +527,7 @@ jobs:
     runs-on: macos-26-intel
     timeout-minutes: 5
     env:
+      ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: 'true'
       V: ${{ inputs.version }}
       ARCH: x86_64
     steps:
@@ -577,6 +583,8 @@ jobs:
     needs: [package-x86_64, package-aarch64, package-openwrt, package-windows, package-macos-aarch64, package-macos-x86_64]
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    env:
+      ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: 'true'
     steps:
       - uses: actions/download-artifact@v4
         with:
