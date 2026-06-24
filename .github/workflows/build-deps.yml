@@ -30,6 +30,7 @@ jobs:
           cd /tmp/ffmpeg
           CC=musl-gcc ./configure \
             --prefix=/tmp/ffbuild \
+            --disable-x86asm \
             --enable-static --disable-shared \
             --disable-everything --enable-small --enable-ffmpeg \
             --enable-protocol=tcp,rtmp --enable-demuxer=flv --enable-muxer=flv \
@@ -44,10 +45,13 @@ jobs:
             -I/tmp/ffbuild/include -L/tmp/ffbuild/lib \
             -lavformat -lavcodec -lavutil \
             -o /tmp/ffbuild/bin/pslinkb-stream
-      - name: Verify
+      - name: Verify (version + musl)
         run: |
-          /tmp/ffbuild/bin/pslinkb-stream --version
-          echo "linux-x86_64 OK"
+          BIN=/tmp/ffbuild/bin/pslinkb-stream
+          "$BIN" --version
+          file "$BIN" | grep -q 'statically linked' || { echo "ERROR: not static"; exit 1; }
+          strings "$BIN" | grep -c GLIBC | grep -qx 0 || { echo "ERROR: linked against glibc"; exit 1; }
+          echo "linux-X OK"
       - uses: actions/upload-artifact@v4
         with:
           name: linux-x86_64
@@ -262,3 +266,59 @@ jobs:
         with:
           name: windows-aarch64
           path: /tmp/ffbuild/bin/pslinkb-stream.exe
+
+  release-deps:
+    needs: [linux-x86_64, linux-aarch64, macos-aarch64, macos-x86_64, windows-x86_64, windows-aarch64]
+    if: ${{ inputs.platform == 'all' && !failure() && !cancelled() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    env:
+      ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: 'true'
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: '*'
+          path: /tmp/deps
+      - name: Package + release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -e
+          OUT=/tmp/out; rm -rf "$OUT" && mkdir -p "$OUT"
+          # Linux stream
+          for arch in x86_64 aarch64; do
+            SRC="/tmp/deps/linux-${arch}/pslinkb-stream"
+            if [ -f "$SRC" ]; then
+              mkdir -p "$OUT/stream/${arch}-linux-musl"
+              cp "$SRC" "$OUT/stream/${arch}-linux-musl/pslinkb-stream"
+              echo "  linux-${arch} ✓"
+            fi
+          done
+          # macOS ffbuild
+          for arch in aarch64 x86_64; do
+            if [ -d "/tmp/deps/macos-${arch}/lib" ]; then
+              mkdir -p "$OUT/ffbuild/${arch}-macos"
+              cp -r "/tmp/deps/macos-${arch}/lib" "$OUT/ffbuild/${arch}-macos/"
+              cp -r "/tmp/deps/macos-${arch}/include" "$OUT/ffbuild/${arch}-macos/"
+              echo "  macos-${arch} ffbuild ✓"
+            fi
+          done
+          # Windows stream
+          for arch in x86_64 aarch64; do
+            SRC="/tmp/deps/windows-${arch}/pslinkb-stream.exe"
+            if [ -f "$SRC" ]; then
+              mkdir -p "$OUT/stream/${arch}-windows"
+              cp "$SRC" "$OUT/stream/${arch}-windows/pslinkb-stream.exe"
+              echo "  windows-${arch} ✓"
+            fi
+          done
+          # Package
+          PKG="/tmp/pslinkb-build-deps.tar.gz"
+          tar czf "$PKG" -C "$OUT" stream/ ffbuild/
+          ls -lh "$PKG"
+          # Upload
+          TAG="build-deps"
+          gh release delete "$TAG" --repo ${{ github.repository }} -y 2>&1 || true
+          gh release create "$TAG" "$PKG" --repo ${{ github.repository }} --title "Build Dependencies" --notes "pslinkb-stream + FFmpeg static libs — CI built"
