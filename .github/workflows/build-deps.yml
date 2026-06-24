@@ -30,6 +30,7 @@ jobs:
           cd /tmp/ffmpeg
           CC=musl-gcc ./configure \
             --prefix=/tmp/ffbuild \
+            --extra-cflags="-U_FORTIFY_SOURCE" \
             --disable-x86asm \
             --enable-static --disable-shared \
             --disable-everything --enable-small --enable-ffmpeg \
@@ -40,7 +41,7 @@ jobs:
             --disable-iconv --disable-lzma --disable-bzlib --disable-zlib --disable-runtime-cpudetect
           make -j$(nproc) && make install
           mkdir -p /tmp/ffbuild/bin
-          musl-gcc -O2 -static -DSTREAM_VERSION=\"0.1.1\" \
+          musl-gcc -O2 -static -U_FORTIFY_SOURCE -DSTREAM_VERSION=\"0.1.1\" \
             /tmp/stream_copy.c \
             -I/tmp/ffbuild/include -L/tmp/ffbuild/lib \
             -lavformat -lavcodec -lavutil \
