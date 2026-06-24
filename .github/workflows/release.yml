@@ -296,10 +296,11 @@ jobs:
       - name: Setup SDKs
         run: |
           setup() {
-            rm -rf "/tmp/sdk-$1" && mkdir "/tmp/sdk-$1"
-            zstd -d "/tmp/sdk-cache/$1.tar.zst" -o "/tmp/sdk-$1/sdk.tar"
-            tar -xf "/tmp/sdk-$1/sdk.tar" -C "/tmp/sdk-$1/"
-            DIR=$(ls -d "/tmp/sdk-$1/openwrt-sdk-*")
+            set -e
+            rm -rf "/tmp/sdk-setup-$1" && mkdir "/tmp/sdk-setup-$1"
+            zstd -d "/tmp/sdk-cache/$1.tar.zst" -o "/tmp/sdk-setup-$1/sdk.tar"
+            tar -xf "/tmp/sdk-setup-$1/sdk.tar" -C "/tmp/sdk-setup-$1/"
+            DIR=$(ls -d "/tmp/sdk-setup-$1/openwrt-sdk-*")
             cat > "/usr/local/bin/$2" << EOF
           #!/bin/sh
           LD_PRELOAD=$DIR/staging_dir/host/lib/runas.so \
