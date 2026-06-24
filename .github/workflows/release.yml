@@ -21,6 +21,9 @@ jobs:
     runs-on: ubuntu-latest
     env:
       V: ${{ inputs.version }}
+      ARCH: x86_64
+      DEB_ARCH: amd64
+      ARCH_IPK: x86_64
     steps:
       - uses: actions/checkout@v4
       - name: Download linux-x86_64 artifact
@@ -46,69 +49,90 @@ jobs:
       - name: Install zstd
         run: sudo apt-get install -y zstd
 
-      - name: Package
+      - name: Package openwrt.tar.gz
         run: |
-          set -e; V="${V#v}"; OUT=/tmp/out; rm -rf "$OUT" && mkdir -p "$OUT"
-          arch=x86_64; ARCH_IPK=x86_64
-          OWRT="/tmp/bins/pslinkb-${arch}-openwrt"; BUN="/tmp/bins/pslinkb-${arch}-bundle"
-          PORT="/tmp/bins/pslinkb-${arch}-portable"
-          STREAM="/tmp/deps/stream/${arch}-linux-musl/pslinkb-stream"; [ -f "$STREAM" ] || STREAM=""
-          CFG="$GITHUB_WORKSPACE/openwrt"
-
-          # openwrt.tar.gz
+          set -e; V="${V#v}"; OUT=/tmp/out; mkdir -p "$OUT"
+          OWRT="/tmp/bins/pslinkb-${ARCH}-openwrt"
+          STREAM="/tmp/deps/stream/${ARCH}-linux-musl/pslinkb-stream"; [ -f "$STREAM" ] || STREAM=""
           rm -rf /tmp/pkg && mkdir -p /tmp/pkg/usr/bin /tmp/pkg/etc/config /tmp/pkg/etc/init.d
           cp "$OWRT" /tmp/pkg/usr/bin/pslinkb && chmod +x /tmp/pkg/usr/bin/pslinkb
           [ -n "$STREAM" ] && cp "$STREAM" /tmp/pkg/usr/bin/pslinkb-stream && chmod +x /tmp/pkg/usr/bin/pslinkb-stream
-          cp "$CFG/etc/config/pslinkb" /tmp/pkg/etc/config/
-          cp "$CFG/etc/init.d/pslinkb" /tmp/pkg/etc/init.d/ && chmod +x /tmp/pkg/etc/init.d/pslinkb
-          tar czf "${OUT}/pslinkb-${V}-${arch}-openwrt.tar.gz" -C /tmp/pkg usr/ etc/
+          cp "$GITHUB_WORKSPACE/openwrt/etc/config/pslinkb" /tmp/pkg/etc/config/
+          cp "$GITHUB_WORKSPACE/openwrt/etc/init.d/pslinkb" /tmp/pkg/etc/init.d/ && chmod +x /tmp/pkg/etc/init.d/pslinkb
+          tar czf "${OUT}/pslinkb-${V}-${ARCH}-openwrt.tar.gz" -C /tmp/pkg usr/ etc/
 
-          # openwrt.apk
+      - name: Package openwrt.apk
+        run: |
+          set -e; V="${V#v}"; OUT=/tmp/out; mkdir -p "$OUT"
+          OWRT="/tmp/bins/pslinkb-${ARCH}-openwrt"
+          STREAM="/tmp/deps/stream/${ARCH}-linux-musl/pslinkb-stream"; [ -f "$STREAM" ] || STREAM=""
           rm -rf /tmp/pa && mkdir -p /tmp/pa/usr/bin /tmp/pa/etc/config /tmp/pa/etc/init.d
           cp "$OWRT" /tmp/pa/usr/bin/pslinkb && chmod +x /tmp/pa/usr/bin/pslinkb
           [ -n "$STREAM" ] && cp "$STREAM" /tmp/pa/usr/bin/pslinkb-stream && chmod +x /tmp/pa/usr/bin/pslinkb-stream
-          cp "$CFG/etc/config/pslinkb" /tmp/pa/etc/config/
-          cp "$CFG/etc/init.d/pslinkb" /tmp/pa/etc/init.d/ && chmod +x /tmp/pa/etc/init.d/pslinkb
-          printf 'pkgname = pslinkb\npkgver = %s-r0\narch = %s\ndepends = libc librt libpthread\norigin = pslinkb\nmaintainer = urlynn\n' "$V" "$arch" > /tmp/pa/.PKGINFO
-          tar czf "${OUT}/pslinkb-${V}-${arch}-openwrt.apk" -C /tmp/pa .PKGINFO usr/ etc/
+          cp "$GITHUB_WORKSPACE/openwrt/etc/config/pslinkb" /tmp/pa/etc/config/
+          cp "$GITHUB_WORKSPACE/openwrt/etc/init.d/pslinkb" /tmp/pa/etc/init.d/ && chmod +x /tmp/pa/etc/init.d/pslinkb
+          printf 'pkgname = pslinkb\npkgver = %s-r0\narch = %s\ndepends = libc librt libpthread\norigin = pslinkb\nmaintainer = urlynn\n' "$V" "$ARCH" > /tmp/pa/.PKGINFO
+          tar czf "${OUT}/pslinkb-${V}-${ARCH}-openwrt.apk" -C /tmp/pa .PKGINFO usr/ etc/
 
-          # openwrt.ipk
+      - name: Package openwrt.ipk
+        run: |
+          set -e; V="${V#v}"; OUT=/tmp/out; mkdir -p "$OUT"
+          OWRT="/tmp/bins/pslinkb-${ARCH}-openwrt"
+          STREAM="/tmp/deps/stream/${ARCH}-linux-musl/pslinkb-stream"; [ -f "$STREAM" ] || STREAM=""
           rm -rf /tmp/ipk && mkdir -p /tmp/ipk/usr/bin /tmp/ipk/etc/config /tmp/ipk/etc/init.d /tmp/ipk/CONTROL
           cp "$OWRT" /tmp/ipk/usr/bin/pslinkb && chmod +x /tmp/ipk/usr/bin/pslinkb
           [ -n "$STREAM" ] && cp "$STREAM" /tmp/ipk/usr/bin/pslinkb-stream && chmod +x /tmp/ipk/usr/bin/pslinkb-stream
-          cp "$CFG/etc/config/pslinkb" /tmp/ipk/etc/config/
-          cp "$CFG/etc/init.d/pslinkb" /tmp/ipk/etc/init.d/ && chmod +x /tmp/ipk/etc/init.d/pslinkb
+          cp "$GITHUB_WORKSPACE/openwrt/etc/config/pslinkb" /tmp/ipk/etc/config/
+          cp "$GITHUB_WORKSPACE/openwrt/etc/init.d/pslinkb" /tmp/ipk/etc/init.d/ && chmod +x /tmp/ipk/etc/init.d/pslinkb
           printf 'Package: pslinkb\nVersion: %s-r0\nArchitecture: %s\nDepends: libc,libpthread\n' "$V" "$ARCH_IPK" > /tmp/ipk/CONTROL/control
           tar czf /tmp/ctl.tar.gz -C /tmp/ipk/CONTROL .
           tar czf /tmp/dat.tar.gz -C /tmp/ipk usr/ etc/
-          echo 2.0 > /tmp/db; tar czf "${OUT}/pslinkb-${V}-${arch}-openwrt.ipk" -C /tmp ctl.tar.gz dat.tar.gz db
+          echo 2.0 > /tmp/db; tar czf "${OUT}/pslinkb-${V}-${ARCH}-openwrt.ipk" -C /tmp ctl.tar.gz dat.tar.gz db
           rm -rf /tmp/ipk /tmp/ctl.tar.gz /tmp/dat.tar.gz /tmp/db
 
-          # bundle
+      - name: Package bundle (tar.zst)
+        run: |
+          set -e; V="${V#v}"; OUT=/tmp/out; mkdir -p "$OUT"
+          BUN="/tmp/bins/pslinkb-${ARCH}-bundle"
+          STREAM="/tmp/deps/stream/${ARCH}-linux-musl/pslinkb-stream"; [ -f "$STREAM" ] || STREAM=""
           rm -rf /tmp/bun && mkdir -p /tmp/bun
           cp "$BUN" /tmp/bun/pslinkb && chmod +x /tmp/bun/pslinkb
           [ -n "$STREAM" ] && cp "$STREAM" /tmp/bun/pslinkb-stream && chmod +x /tmp/bun/pslinkb-stream
-          tar --zstd -cf "${OUT}/pslinkb-${V}-${arch}-unknown-linux-musl-bundle.tar.zst" -C /tmp/bun .
+          tar --zstd -cf "${OUT}/pslinkb-${V}-${ARCH}-unknown-linux-musl-bundle.tar.zst" -C /tmp/bun .
 
-          # deb
+      - name: Package deb
+        run: |
+          set -e; V="${V#v}"; OUT=/tmp/out; mkdir -p "$OUT"
+          BUN="/tmp/bins/pslinkb-${ARCH}-bundle"
+          STREAM="/tmp/deps/stream/${ARCH}-linux-musl/pslinkb-stream"; [ -f "$STREAM" ] || STREAM=""
           rm -rf /tmp/deb && mkdir -p /tmp/deb/usr/bin /tmp/deb/DEBIAN
           cp "$BUN" /tmp/deb/usr/bin/pslinkb && chmod +x /tmp/deb/usr/bin/pslinkb
           [ -n "$STREAM" ] && cp "$STREAM" /tmp/deb/usr/bin/pslinkb-stream && chmod +x /tmp/deb/usr/bin/pslinkb-stream
-          printf 'Package: pslinkb\nVersion: %s\nArchitecture: amd64\nMaintainer: urlynn\nSection: net\nPriority: optional\nDescription: PS5 to Bilibili live streaming bridge\n' "$V" > /tmp/deb/DEBIAN/control
+          printf 'Package: pslinkb\nVersion: %s\nArchitecture: %s\nMaintainer: urlynn\nSection: net\nPriority: optional\nDescription: PS5 to Bilibili live streaming bridge\n' "$V" "$DEB_ARCH" > /tmp/deb/DEBIAN/control
           tar czf /tmp/ctl.tar.gz -C /tmp/deb/DEBIAN .; tar czf /tmp/dat.tar.gz -C /tmp/deb usr/; echo 2.0 > /tmp/db
-          ar r "${OUT}/pslinkb-${V}-${arch}-debian.deb" /tmp/db /tmp/ctl.tar.gz /tmp/dat.tar.gz
+          ar r "${OUT}/pslinkb-${V}-${ARCH}-debian.deb" /tmp/db /tmp/ctl.tar.gz /tmp/dat.tar.gz
           rm -rf /tmp/deb /tmp/ctl.tar.gz /tmp/dat.tar.gz /tmp/db
 
-          # arch
+      - name: Package arch linux
+        run: |
+          set -e; V="${V#v}"; OUT=/tmp/out; mkdir -p "$OUT"
+          BUN="/tmp/bins/pslinkb-${ARCH}-bundle"
+          STREAM="/tmp/deps/stream/${ARCH}-linux-musl/pslinkb-stream"; [ -f "$STREAM" ] || STREAM=""
           rm -rf /tmp/arch && mkdir -p /tmp/arch/usr/bin
           cp "$BUN" /tmp/arch/usr/bin/pslinkb && chmod +x /tmp/arch/usr/bin/pslinkb
           [ -n "$STREAM" ] && cp "$STREAM" /tmp/arch/usr/bin/pslinkb-stream && chmod +x /tmp/arch/usr/bin/pslinkb-stream
-          printf 'pkgname = pslinkb\npkgver = %s-1\npkgdesc = PS5 to Bilibili live streaming bridge\narch = %s\n' "$V" "$arch" > /tmp/arch/.PKGINFO
-          tar --zstd -cf "${OUT}/pslinkb-${V}-${arch}-archlinux.pkg.tar.zst" -C /tmp/arch .PKGINFO usr/
+          printf 'pkgname = pslinkb\npkgver = %s-1\npkgdesc = PS5 to Bilibili live streaming bridge\narch = %s\n' "$V" "$ARCH" > /tmp/arch/.PKGINFO
+          tar --zstd -cf "${OUT}/pslinkb-${V}-${ARCH}-archlinux.pkg.tar.zst" -C /tmp/arch .PKGINFO usr/
 
-          # portable
-          [ -f "$PORT" ] && cp "$PORT" "${OUT}/pslinkb-${V}-${arch}-unknown-linux-musl-portable" && chmod +x "${OUT}/pslinkb-${V}-${arch}-unknown-linux-musl-portable" || echo "WARN: no portable"
-          ls -la "$OUT/" && echo "x86_64 done"
+      - name: Package portable
+        run: |
+          V="${V#v}"; OUT=/tmp/out; mkdir -p "$OUT"
+          PORT="/tmp/bins/pslinkb-${ARCH}-portable"
+          [ -f "$PORT" ] && cp "$PORT" "${OUT}/pslinkb-${V}-${ARCH}-unknown-linux-musl-portable" && chmod +x "${OUT}/pslinkb-${V}-${ARCH}-unknown-linux-musl-portable" || echo "WARN: no portable"
+
+      - name: List output
+        run: |
+          V="${V#v}"; ls -la /tmp/out/ && echo "${ARCH} done"
 
       - name: Verify IPK (may fail in CI)
         continue-on-error: true
@@ -140,6 +164,9 @@ jobs:
     runs-on: ubuntu-24.04-arm
     env:
       V: ${{ inputs.version }}
+      ARCH: aarch64
+      DEB_ARCH: arm64
+      ARCH_IPK: aarch64_generic
     steps:
       - uses: actions/checkout@v4
       - name: Download linux-aarch64 artifact
@@ -165,62 +192,90 @@ jobs:
       - name: Install zstd
         run: sudo apt-get install -y zstd
 
-      - name: Package
+      - name: Package openwrt.tar.gz
         run: |
-          set -e; V="${V#v}"; OUT=/tmp/out; rm -rf "$OUT" && mkdir -p "$OUT"
-          arch=aarch64; ARCH_IPK=aarch64_generic
-          OWRT="/tmp/bins/pslinkb-${arch}-openwrt"; BUN="/tmp/bins/pslinkb-${arch}-bundle"
-          PORT="/tmp/bins/pslinkb-${arch}-portable"
-          STREAM="/tmp/deps/stream/${arch}-linux-musl/pslinkb-stream"; [ -f "$STREAM" ] || STREAM=""
-          CFG="$GITHUB_WORKSPACE/openwrt"
-
+          set -e; V="${V#v}"; OUT=/tmp/out; mkdir -p "$OUT"
+          OWRT="/tmp/bins/pslinkb-${ARCH}-openwrt"
+          STREAM="/tmp/deps/stream/${ARCH}-linux-musl/pslinkb-stream"; [ -f "$STREAM" ] || STREAM=""
           rm -rf /tmp/pkg && mkdir -p /tmp/pkg/usr/bin /tmp/pkg/etc/config /tmp/pkg/etc/init.d
           cp "$OWRT" /tmp/pkg/usr/bin/pslinkb && chmod +x /tmp/pkg/usr/bin/pslinkb
           [ -n "$STREAM" ] && cp "$STREAM" /tmp/pkg/usr/bin/pslinkb-stream && chmod +x /tmp/pkg/usr/bin/pslinkb-stream
-          cp "$CFG/etc/config/pslinkb" /tmp/pkg/etc/config/
-          cp "$CFG/etc/init.d/pslinkb" /tmp/pkg/etc/init.d/ && chmod +x /tmp/pkg/etc/init.d/pslinkb
-          tar czf "${OUT}/pslinkb-${V}-${arch}-openwrt.tar.gz" -C /tmp/pkg usr/ etc/
+          cp "$GITHUB_WORKSPACE/openwrt/etc/config/pslinkb" /tmp/pkg/etc/config/
+          cp "$GITHUB_WORKSPACE/openwrt/etc/init.d/pslinkb" /tmp/pkg/etc/init.d/ && chmod +x /tmp/pkg/etc/init.d/pslinkb
+          tar czf "${OUT}/pslinkb-${V}-${ARCH}-openwrt.tar.gz" -C /tmp/pkg usr/ etc/
 
+      - name: Package openwrt.apk
+        run: |
+          set -e; V="${V#v}"; OUT=/tmp/out; mkdir -p "$OUT"
+          OWRT="/tmp/bins/pslinkb-${ARCH}-openwrt"
+          STREAM="/tmp/deps/stream/${ARCH}-linux-musl/pslinkb-stream"; [ -f "$STREAM" ] || STREAM=""
           rm -rf /tmp/pa && mkdir -p /tmp/pa/usr/bin /tmp/pa/etc/config /tmp/pa/etc/init.d
           cp "$OWRT" /tmp/pa/usr/bin/pslinkb && chmod +x /tmp/pa/usr/bin/pslinkb
           [ -n "$STREAM" ] && cp "$STREAM" /tmp/pa/usr/bin/pslinkb-stream && chmod +x /tmp/pa/usr/bin/pslinkb-stream
-          cp "$CFG/etc/config/pslinkb" /tmp/pa/etc/config/
-          cp "$CFG/etc/init.d/pslinkb" /tmp/pa/etc/init.d/ && chmod +x /tmp/pa/etc/init.d/pslinkb
-          printf 'pkgname = pslinkb\npkgver = %s-r0\narch = %s\ndepends = libc librt libpthread\norigin = pslinkb\nmaintainer = urlynn\n' "$V" "$arch" > /tmp/pa/.PKGINFO
-          tar czf "${OUT}/pslinkb-${V}-${arch}-openwrt.apk" -C /tmp/pa .PKGINFO usr/ etc/
+          cp "$GITHUB_WORKSPACE/openwrt/etc/config/pslinkb" /tmp/pa/etc/config/
+          cp "$GITHUB_WORKSPACE/openwrt/etc/init.d/pslinkb" /tmp/pa/etc/init.d/ && chmod +x /tmp/pa/etc/init.d/pslinkb
+          printf 'pkgname = pslinkb\npkgver = %s-r0\narch = %s\ndepends = libc librt libpthread\norigin = pslinkb\nmaintainer = urlynn\n' "$V" "$ARCH" > /tmp/pa/.PKGINFO
+          tar czf "${OUT}/pslinkb-${V}-${ARCH}-openwrt.apk" -C /tmp/pa .PKGINFO usr/ etc/
 
+      - name: Package openwrt.ipk
+        run: |
+          set -e; V="${V#v}"; OUT=/tmp/out; mkdir -p "$OUT"
+          OWRT="/tmp/bins/pslinkb-${ARCH}-openwrt"
+          STREAM="/tmp/deps/stream/${ARCH}-linux-musl/pslinkb-stream"; [ -f "$STREAM" ] || STREAM=""
           rm -rf /tmp/ipk && mkdir -p /tmp/ipk/usr/bin /tmp/ipk/etc/config /tmp/ipk/etc/init.d /tmp/ipk/CONTROL
           cp "$OWRT" /tmp/ipk/usr/bin/pslinkb && chmod +x /tmp/ipk/usr/bin/pslinkb
           [ -n "$STREAM" ] && cp "$STREAM" /tmp/ipk/usr/bin/pslinkb-stream && chmod +x /tmp/ipk/usr/bin/pslinkb-stream
-          cp "$CFG/etc/config/pslinkb" /tmp/ipk/etc/config/
-          cp "$CFG/etc/init.d/pslinkb" /tmp/ipk/etc/init.d/ && chmod +x /tmp/ipk/etc/init.d/pslinkb
+          cp "$GITHUB_WORKSPACE/openwrt/etc/config/pslinkb" /tmp/ipk/etc/config/
+          cp "$GITHUB_WORKSPACE/openwrt/etc/init.d/pslinkb" /tmp/ipk/etc/init.d/ && chmod +x /tmp/ipk/etc/init.d/pslinkb
           printf 'Package: pslinkb\nVersion: %s-r0\nArchitecture: %s\nDepends: libc,libpthread\n' "$V" "$ARCH_IPK" > /tmp/ipk/CONTROL/control
           tar czf /tmp/ctl.tar.gz -C /tmp/ipk/CONTROL .
           tar czf /tmp/dat.tar.gz -C /tmp/ipk usr/ etc/
-          echo 2.0 > /tmp/db; tar czf "${OUT}/pslinkb-${V}-${arch}-openwrt.ipk" -C /tmp ctl.tar.gz dat.tar.gz db
+          echo 2.0 > /tmp/db; tar czf "${OUT}/pslinkb-${V}-${ARCH}-openwrt.ipk" -C /tmp ctl.tar.gz dat.tar.gz db
           rm -rf /tmp/ipk /tmp/ctl.tar.gz /tmp/dat.tar.gz /tmp/db
 
+      - name: Package bundle (tar.zst)
+        run: |
+          set -e; V="${V#v}"; OUT=/tmp/out; mkdir -p "$OUT"
+          BUN="/tmp/bins/pslinkb-${ARCH}-bundle"
+          STREAM="/tmp/deps/stream/${ARCH}-linux-musl/pslinkb-stream"; [ -f "$STREAM" ] || STREAM=""
           rm -rf /tmp/bun && mkdir -p /tmp/bun
           cp "$BUN" /tmp/bun/pslinkb && chmod +x /tmp/bun/pslinkb
           [ -n "$STREAM" ] && cp "$STREAM" /tmp/bun/pslinkb-stream && chmod +x /tmp/bun/pslinkb-stream
-          tar --zstd -cf "${OUT}/pslinkb-${V}-${arch}-unknown-linux-musl-bundle.tar.zst" -C /tmp/bun .
+          tar --zstd -cf "${OUT}/pslinkb-${V}-${ARCH}-unknown-linux-musl-bundle.tar.zst" -C /tmp/bun .
 
+      - name: Package deb
+        run: |
+          set -e; V="${V#v}"; OUT=/tmp/out; mkdir -p "$OUT"
+          BUN="/tmp/bins/pslinkb-${ARCH}-bundle"
+          STREAM="/tmp/deps/stream/${ARCH}-linux-musl/pslinkb-stream"; [ -f "$STREAM" ] || STREAM=""
           rm -rf /tmp/deb && mkdir -p /tmp/deb/usr/bin /tmp/deb/DEBIAN
           cp "$BUN" /tmp/deb/usr/bin/pslinkb && chmod +x /tmp/deb/usr/bin/pslinkb
           [ -n "$STREAM" ] && cp "$STREAM" /tmp/deb/usr/bin/pslinkb-stream && chmod +x /tmp/deb/usr/bin/pslinkb-stream
-          printf 'Package: pslinkb\nVersion: %s\nArchitecture: arm64\nMaintainer: urlynn\nSection: net\nPriority: optional\nDescription: PS5 to Bilibili live streaming bridge\n' "$V" > /tmp/deb/DEBIAN/control
+          printf 'Package: pslinkb\nVersion: %s\nArchitecture: %s\nMaintainer: urlynn\nSection: net\nPriority: optional\nDescription: PS5 to Bilibili live streaming bridge\n' "$V" "$DEB_ARCH" > /tmp/deb/DEBIAN/control
           tar czf /tmp/ctl.tar.gz -C /tmp/deb/DEBIAN .; tar czf /tmp/dat.tar.gz -C /tmp/deb usr/; echo 2.0 > /tmp/db
-          ar r "${OUT}/pslinkb-${V}-${arch}-debian.deb" /tmp/db /tmp/ctl.tar.gz /tmp/dat.tar.gz
+          ar r "${OUT}/pslinkb-${V}-${ARCH}-debian.deb" /tmp/db /tmp/ctl.tar.gz /tmp/dat.tar.gz
           rm -rf /tmp/deb /tmp/ctl.tar.gz /tmp/dat.tar.gz /tmp/db
 
+      - name: Package arch linux
+        run: |
+          set -e; V="${V#v}"; OUT=/tmp/out; mkdir -p "$OUT"
+          BUN="/tmp/bins/pslinkb-${ARCH}-bundle"
+          STREAM="/tmp/deps/stream/${ARCH}-linux-musl/pslinkb-stream"; [ -f "$STREAM" ] || STREAM=""
           rm -rf /tmp/arch && mkdir -p /tmp/arch/usr/bin
           cp "$BUN" /tmp/arch/usr/bin/pslinkb && chmod +x /tmp/arch/usr/bin/pslinkb
           [ -n "$STREAM" ] && cp "$STREAM" /tmp/arch/usr/bin/pslinkb-stream && chmod +x /tmp/arch/usr/bin/pslinkb-stream
-          printf 'pkgname = pslinkb\npkgver = %s-1\npkgdesc = PS5 to Bilibili live streaming bridge\narch = %s\n' "$V" "$arch" > /tmp/arch/.PKGINFO
-          tar --zstd -cf "${OUT}/pslinkb-${V}-${arch}-archlinux.pkg.tar.zst" -C /tmp/arch .PKGINFO usr/
+          printf 'pkgname = pslinkb\npkgver = %s-1\npkgdesc = PS5 to Bilibili live streaming bridge\narch = %s\n' "$V" "$ARCH" > /tmp/arch/.PKGINFO
+          tar --zstd -cf "${OUT}/pslinkb-${V}-${ARCH}-archlinux.pkg.tar.zst" -C /tmp/arch .PKGINFO usr/
 
-          [ -f "$PORT" ] && cp "$PORT" "${OUT}/pslinkb-${V}-${arch}-unknown-linux-musl-portable" && chmod +x "${OUT}/pslinkb-${V}-${arch}-unknown-linux-musl-portable" || echo "WARN: no portable"
-          ls -la "$OUT/" && echo "aarch64 done"
+      - name: Package portable
+        run: |
+          V="${V#v}"; OUT=/tmp/out; mkdir -p "$OUT"
+          PORT="/tmp/bins/pslinkb-${ARCH}-portable"
+          [ -f "$PORT" ] && cp "$PORT" "${OUT}/pslinkb-${V}-${ARCH}-unknown-linux-musl-portable" && chmod +x "${OUT}/pslinkb-${V}-${ARCH}-unknown-linux-musl-portable" || echo "WARN: no portable"
+
+      - name: List output
+        run: |
+          V="${V#v}"; ls -la /tmp/out/ && echo "${ARCH} done"
 
       - name: Verify IPK (may fail in CI)
         continue-on-error: true
@@ -360,7 +415,6 @@ jobs:
           SDK_DIR=$(ls -d /tmp/sdk/openwrt-sdk-*)
           cp "$SDK_DIR/staging_dir/host/bin/apk" /usr/local/bin/owrt-apk
           chmod +x /usr/local/bin/owrt-apk
-          # Run via ld-linux to resolve dynamic libs
           printf '#!/bin/sh\nexec %s/staging_dir/host/lib/ld-linux-x86-64.so.2 --library-path %s/staging_dir/host/lib %s/staging_dir/host/bin/apk "$@"\n' \
             "$SDK_DIR" "$SDK_DIR" "$SDK_DIR" > /usr/local/bin/owrt-apk
           chmod +x /usr/local/bin/owrt-apk
@@ -379,10 +433,8 @@ jobs:
 
           echo "=== luci-app files ===" && find /tmp/lp -type f | sort
 
-          # tar.gz
           tar czf "${OUT}/luci-app-pslinkb-${LVER}.tar.gz" -C /tmp/lp .
 
-          # APK (proper SDK mkpkg)
           owrt-apk mkpkg \
             --info "name:luci-app-pslinkb" \
             --info "version:${LVER}" \
@@ -391,7 +443,6 @@ jobs:
             --files /tmp/lp \
             --output "${OUT}/luci-app-pslinkb-${LVER}.apk"
 
-          # IPK
           rm -rf /tmp/li && cp -a /tmp/lp /tmp/li; mkdir -p /tmp/li/CONTROL
           printf 'Package: luci-app-pslinkb\nVersion: %s\nArchitecture: all\nDepends: pslinkb\n' "$LVER" > /tmp/li/CONTROL/control
           tar czf /tmp/ctl.tar.gz -C /tmp/li/CONTROL .; rm -rf /tmp/li/CONTROL
@@ -400,12 +451,6 @@ jobs:
           rm -rf /tmp/li /tmp/lp /tmp/ctl.tar.gz /tmp/dat.tar.gz /tmp/db
           echo "luci-app done"
           ls -la "$OUT/"
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: pkgs-luci
-          path: /tmp/out/
-          retention-days: 30
 
       - uses: actions/upload-artifact@v4
         with:

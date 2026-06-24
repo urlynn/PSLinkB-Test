@@ -1,0 +1,62 @@
+name: Debug Session
+
+on:
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: 'Runner'
+        required: true
+        type: choice
+        options:
+          - ubuntu-latest
+          - ubuntu-24.04-arm
+          - macos-26
+          - macos-26-intel
+          - windows-latest
+          - windows-11-arm
+        default: 'ubuntu-latest'
+      do-checkout:
+        description: 'Clone repo'
+        type: boolean
+        required: false
+        default: true
+
+jobs:
+  debug:
+    runs-on: ${{ inputs.platform }}
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Checkout
+        if: ${{ inputs.do-checkout }}
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain stable
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+
+      - name: Setup macOS deps
+        if: ${{ contains(inputs.platform, 'macos') }}
+        run: brew install nasm pkg-config
+
+      - name: Setup Windows deps (mingw)
+        if: ${{ inputs.platform == 'windows-latest' }}
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          install: >-
+            git
+            make
+            diffutils
+            mingw-w64-x86_64-binutils
+            mingw-w64-x86_64-gcc
+            mingw-w64-x86_64-pkgconf
+            mingw-w64-x86_64-nasm
+
+      - name: Setup Linux deps (musl)
+        if: ${{ contains(inputs.platform, 'ubuntu') }}
+        run: sudo apt-get install -y musl-tools zstd
+
+      - name: Setup tmate
+        uses: mxschmitt/action-tmate@v3
