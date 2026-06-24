@@ -67,6 +67,11 @@ jobs:
           file "$SDK_DIR/staging_dir/host/bin/apk"
           apk --version
 
+      - name: Verify stream
+        run: |
+          S="/tmp/deps/stream/${ARCH}-linux-musl/pslinkb-stream"
+          if [ -f "$S" ]; then "$S" --version && echo "stream OK: $ARCH"; else echo "WARN: no stream"; fi
+
       - name: Package openwrt.tar.gz
         run: |
           set -e; V="${V#v}"; OUT=/tmp/out; mkdir -p "$OUT"
@@ -167,7 +172,6 @@ jobs:
           sudo cp "$IPK" /tmp/owrt/tmp/test.ipk
           sudo chroot /tmp/owrt /bin/opkg install /tmp/test.ipk --force-overwrite
           sudo chroot /tmp/owrt /usr/bin/pslinkb --version
-          if [ -f /tmp/owrt/usr/bin/pslinkb-stream ]; then sudo chroot /tmp/owrt /usr/bin/pslinkb-stream --version; fi
           echo "IPK OK"
 
       - name: Verify APK
@@ -182,7 +186,6 @@ jobs:
           sudo cp "$APK" /tmp/owrt/tmp/test.apk
           sudo chroot /tmp/owrt /usr/bin/sh -c "apk add --allow-untrusted /tmp/test.apk"
           sudo chroot /tmp/owrt /usr/bin/pslinkb --version
-          if [ -f /tmp/owrt/usr/bin/pslinkb-stream ]; then sudo chroot /tmp/owrt /usr/bin/pslinkb-stream --version; fi
           echo "APK OK"
 
       - name: List output
@@ -244,6 +247,11 @@ jobs:
           export LD_LIBRARY_PATH="$SDK_DIR/staging_dir/host/lib:$LD_LIBRARY_PATH"
           file "$SDK_DIR/staging_dir/host/bin/apk"
           apk --version
+
+      - name: Verify stream
+        run: |
+          S="/tmp/deps/stream/${ARCH}-linux-musl/pslinkb-stream"
+          if [ -f "$S" ]; then "$S" --version && echo "stream OK: $ARCH"; else echo "WARN: no stream"; fi
 
       - name: Package openwrt.tar.gz
         run: |
@@ -345,7 +353,6 @@ jobs:
           sudo cp "$IPK" /tmp/owrt/tmp/test.ipk
           sudo chroot /tmp/owrt /bin/opkg install /tmp/test.ipk --force-overwrite
           sudo chroot /tmp/owrt /usr/bin/pslinkb --version
-          if [ -f /tmp/owrt/usr/bin/pslinkb-stream ]; then sudo chroot /tmp/owrt /usr/bin/pslinkb-stream --version; fi
           echo "IPK OK"
 
       - name: Verify APK
@@ -360,7 +367,6 @@ jobs:
           sudo cp "$APK" /tmp/owrt/tmp/test.apk
           sudo chroot /tmp/owrt /usr/bin/sh -c "apk add --allow-untrusted /tmp/test.apk"
           sudo chroot /tmp/owrt /usr/bin/pslinkb --version
-          if [ -f /tmp/owrt/usr/bin/pslinkb-stream ]; then sudo chroot /tmp/owrt /usr/bin/pslinkb-stream --version; fi
           echo "APK OK"
 
       - name: List output
@@ -399,6 +405,14 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: gh release download ${{ inputs.deps-tag }} --repo ${{ github.repository }} -p 'pslinkb-build-deps.tar.gz' -D /tmp/ --clobber || true
 
+      - name: Verify stream
+        shell: bash
+        run: |
+          [ -f /tmp/pslinkb-build-deps.tar.gz ] || { echo "WARN: no deps"; exit 0; }
+          mkdir -p /tmp/deps && tar xzf /tmp/pslinkb-build-deps.tar.gz -C /tmp/deps
+          S="/tmp/deps/stream/x86_64-windows/pslinkb-stream.exe"
+          if [ -f "$S" ]; then "$S" --version && echo "stream OK: windows"; else echo "WARN: no stream"; fi
+
       - name: Package
         shell: bash
         run: |
@@ -417,9 +431,7 @@ jobs:
           F=$(ls /tmp/out/pslinkb-*-x86_64-windows.zip 2>/dev/null | head -1)
           [ -z "$F" ] && echo "ERROR: no zip" && exit 1
           7z x "-o/tmp/win" "$F" -y
-          /tmp/win/pslinkb.exe --version
-          [ -f /tmp/win/pslinkb-stream.exe ] && /tmp/win/pslinkb-stream.exe --version
-          echo "Windows OK"
+          /tmp/win/pslinkb.exe --version && echo "Windows OK"
 
       - uses: actions/upload-artifact@v4
         with:
