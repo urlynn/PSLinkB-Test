@@ -19,6 +19,7 @@ permissions:
 jobs:
   package-x86_64:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     env:
       V: ${{ inputs.version }}
       ARCH: x86_64
@@ -162,6 +163,7 @@ jobs:
 
   package-aarch64:
     runs-on: ubuntu-24.04-arm
+    timeout-minutes: 5
     env:
       V: ${{ inputs.version }}
       ARCH: aarch64
@@ -305,6 +307,7 @@ jobs:
 
   package-windows:
     runs-on: windows-latest
+    timeout-minutes: 5
     env:
       V: ${{ inputs.version }}
     steps:
@@ -355,6 +358,7 @@ jobs:
 
   package-macos:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     env:
       V: ${{ inputs.version }}
     steps:
@@ -397,6 +401,7 @@ jobs:
 
   package-luci:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     env:
       V: ${{ inputs.version }}
     steps:
@@ -461,6 +466,7 @@ jobs:
   release:
     needs: [package-x86_64, package-aarch64, package-windows, package-macos, package-luci]
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - uses: actions/download-artifact@v4
         with:

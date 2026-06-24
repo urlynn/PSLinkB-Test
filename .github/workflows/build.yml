@@ -38,6 +38,7 @@ jobs:
   build-linux-x86_64:
     if: ${{ inputs.linux-x86_64 || github.event_name != 'workflow_dispatch' }}
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - run: rustup target add x86_64-unknown-linux-musl
@@ -57,6 +58,7 @@ jobs:
   build-linux-aarch64:
     if: ${{ inputs.linux-aarch64 || github.event_name != 'workflow_dispatch' }}
     runs-on: ubuntu-24.04-arm
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - run: rustup target add aarch64-unknown-linux-musl
@@ -76,6 +78,7 @@ jobs:
   build-windows-x86_64:
     if: ${{ inputs.windows-x86_64 || github.event_name != 'workflow_dispatch' }}
     runs-on: windows-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - run: rustup target add x86_64-pc-windows-gnu
@@ -92,6 +95,7 @@ jobs:
   build-macos-aarch64:
     if: ${{ inputs.macos-aarch64 || github.event_name != 'workflow_dispatch' }}
     runs-on: macos-26
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - name: Download FFmpeg deps from release
@@ -124,6 +128,7 @@ jobs:
   build-macos-x86_64:
     if: ${{ inputs.macos-x86_64 || github.event_name != 'workflow_dispatch' }}
     runs-on: macos-26-intel
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - name: Download FFmpeg deps from release
