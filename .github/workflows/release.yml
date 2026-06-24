@@ -1,5 +1,7 @@
 name: Release
 
+# PSLinkB Release — packaging + verification + GitHub Release
+
 on:
   workflow_dispatch:
     inputs:
