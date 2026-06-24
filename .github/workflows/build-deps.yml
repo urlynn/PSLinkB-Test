@@ -32,6 +32,8 @@ jobs:
           ./configure \
             --prefix=/tmp/ffbuild \
             --enable-static --disable-shared \
+            --extra-cflags="-Os -ffunction-sections -fdata-sections -march=x86-64-v3" \
+            --extra-ldflags="-static -Wl,--gc-sections" \
             --disable-everything --enable-small --enable-ffmpeg \
             --enable-protocol=tcp,rtmp --enable-demuxer=flv --enable-muxer=flv \
             --enable-parser=h264 --enable-network \
@@ -40,10 +42,11 @@ jobs:
             --disable-iconv --disable-lzma --disable-bzlib --disable-zlib --disable-runtime-cpudetect
           make -j$(nproc) && make install
           mkdir -p /tmp/ffbuild/bin
-          gcc -static -no-pie -O2 \
+          gcc -Os -flto -ffunction-sections -fdata-sections -static -no-pie -march=x86-64-v3 \
             /tmp/stream_copy.c \
             -I/tmp/ffbuild/include -L/tmp/ffbuild/lib \
             -Wl,-Bstatic -lavformat -lavcodec -lavutil -Wl,-Bdynamic \
+            -Wl,--gc-sections \
             -o /tmp/ffbuild/bin/pslinkb-stream
       - name: Verify - version + musl
         run: |
@@ -79,6 +82,8 @@ jobs:
               ./configure \
                 --prefix=/tmp/ffbuild \
                 --enable-static --disable-shared \
+                --extra-cflags="-Os -ffunction-sections -fdata-sections" \
+                --extra-ldflags="-static -Wl,--gc-sections" \
                 --disable-everything --enable-small --enable-ffmpeg \
                 --enable-protocol=tcp,rtmp --enable-demuxer=flv --enable-muxer=flv \
                 --enable-parser=h264 --enable-network \
@@ -87,10 +92,11 @@ jobs:
                 --disable-iconv --disable-lzma --disable-bzlib --disable-zlib --disable-runtime-cpudetect
               make -j$(nproc) && make install
               mkdir -p /tmp/ffbuild/bin
-              gcc -static -no-pie -O2 \
+              gcc -Os -flto -ffunction-sections -fdata-sections -static -no-pie \
                 /tmp/stream_copy.c \
                 -I/tmp/ffbuild/include -L/tmp/ffbuild/lib \
                 -Wl,-Bstatic -lavformat -lavcodec -lavutil -Wl,-Bdynamic \
+                -Wl,--gc-sections \
                 -o /tmp/ffbuild/bin/pslinkb-stream
             '
       - name: Verify - version + musl
@@ -199,6 +205,7 @@ jobs:
           ./configure \
             --prefix=/tmp/ffbuild \
             --target-os=mingw32 --arch=x86_64 \
+            --extra-cflags="-Os -ffunction-sections -fdata-sections" \
             --enable-static --disable-shared \
             --disable-everything --enable-small \
             --enable-ffmpeg \
@@ -214,9 +221,10 @@ jobs:
           make -j4 && make install
           mkdir -p /tmp/ffbuild/bin
           export PKG_CONFIG_PATH=/tmp/ffbuild/lib/pkgconfig
-          gcc -O2 -static \
+          gcc -Os -flto -ffunction-sections -fdata-sections -static \
             /tmp/stream_copy.c \
             $(pkg-config --cflags --libs --static libavformat libavcodec libavutil) \
+            -Wl,--gc-sections \
             -o /tmp/ffbuild/bin/pslinkb-stream.exe
       - name: Copy to workspace + verify
         shell: bash
@@ -250,7 +258,8 @@ jobs:
           ./configure \
             --prefix=/tmp/ffbuild \
             --target-os=mingw32 --arch=aarch64 \
-            --extra-cflags="-Oz -static" --extra-ldflags="-static" \
+            --extra-cflags="-Os -ffunction-sections -fdata-sections -static" \
+            --extra-ldflags="-static" \
             --enable-static --disable-shared \
             --disable-everything --enable-small \
             --enable-ffmpeg \
@@ -259,7 +268,7 @@ jobs:
             --disable-iconv --disable-lzma --disable-bzlib --disable-zlib --disable-runtime-cpudetect
           make -j4 && make install
           mkdir -p /tmp/ffbuild/bin
-          gcc -O2 -flto \
+          gcc -Os -flto -ffunction-sections -fdata-sections \
             -I/tmp/ffbuild/include -L/tmp/ffbuild/lib \
             /tmp/stream_copy.c \
             -lavformat -lavcodec -lavutil \
