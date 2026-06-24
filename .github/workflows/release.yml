@@ -251,25 +251,39 @@ jobs:
           [ -f /tmp/pslinkb-deps-linux-x86_64.tar.gz ] && tar xzf /tmp/pslinkb-deps-linux-x86_64.tar.gz -C /tmp/deps-x86_64 || true
           [ -f /tmp/pslinkb-deps-linux-aarch64.tar.gz ] && tar xzf /tmp/pslinkb-deps-linux-aarch64.tar.gz -C /tmp/deps-aarch64 || true
 
-      - name: Install zstd + SDK
+      - name: Resolve SDK hash
+        id: sdk
         run: |
           sudo apt-get install -y zstd
-          BASE="https://downloads.openwrt.org/snapshots/targets/x86/64"
-          SDK_NAME=$(curl -sL "$BASE/" | grep -oP 'openwrt-sdk[^"]*tar\.zst' | head -1)
-          [ -n "$SDK_NAME" ] || { echo "ERROR: SDK not found at $BASE/"; curl -sL "$BASE/"; exit 1; }
-          echo "SDK: $SDK_NAME"
-          curl -sL "$BASE/$SDK_NAME" -o /tmp/sdk.tar.zst
-          rm -rf /tmp/sdk && mkdir -p /tmp/sdk
-          zstd -d /tmp/sdk.tar.zst -o /tmp/sdk.tar
-          tar -xf /tmp/sdk.tar -C /tmp/sdk/
-          SDK_DIR=$(ls -d /tmp/sdk/openwrt-sdk-*)
-          rm -rf /tmp/sdk.tar.zst /tmp/sdk.tar
+          HASH=$(curl -sL 'https://downloads.openwrt.org/snapshots/targets/x86/64/sha256sums' | awk '/openwrt-sdk/{print $1;exit}')
+          echo "hash=$HASH" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/cache@v4
+        id: cache
+        with:
+          path: /tmp/sdk-cache
+          key: openwrt-sdk-${{ steps.sdk.outputs.hash }}
+
+      - name: Download SDK
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p /tmp/sdk-cache
+          URL='https://downloads.openwrt.org/snapshots/targets/x86/64/openwrt-sdk-x86-64_gcc-14.3.0_musl.Linux-x86_64.tar.zst'
+          curl -L --retry 3 -o /tmp/sdk-cache/sdk.tar.zst "$URL"
+          echo "${{ steps.sdk.outputs.hash }}  /tmp/sdk-cache/sdk.tar.zst" | sha256sum -c
+
+      - name: Setup SDK
+        run: |
+          rm -rf /tmp/sdk-snap && mkdir /tmp/sdk-snap
+          zstd -d /tmp/sdk-cache/sdk.tar.zst -o /tmp/sdk-snap/sdk.tar
+          tar -xf /tmp/sdk-snap/sdk.tar -C /tmp/sdk-snap/
+          SNAP_DIR=$(ls -d /tmp/sdk-snap/openwrt-sdk-*)
           cat > /usr/local/bin/openwrt-apk << EOF
           #!/bin/sh
-          LD_PRELOAD=$SDK_DIR/staging_dir/host/lib/runas.so \
-          exec $SDK_DIR/staging_dir/host/lib/ld-linux-x86-64.so.2 \
-            --library-path $SDK_DIR/staging_dir/host/lib \
-            $SDK_DIR/staging_dir/host/bin/.apk.bin "\$@"
+          LD_PRELOAD=$SNAP_DIR/staging_dir/host/lib/runas.so \
+          exec $SNAP_DIR/staging_dir/host/lib/ld-linux-x86-64.so.2 \
+            --library-path $SNAP_DIR/staging_dir/host/lib \
+            $SNAP_DIR/staging_dir/host/bin/.apk.bin "\$@"
           EOF
           chmod +x /usr/local/bin/openwrt-apk
           openwrt-apk --version
