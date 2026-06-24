@@ -264,7 +264,7 @@ jobs:
           rm -rf /tmp/sdk.tar.zst /tmp/sdk.tar
           export PATH="$SDK_DIR/staging_dir/host/bin:$PATH"
           export LD_LIBRARY_PATH="$SDK_DIR/staging_dir/host/lib:$LD_LIBRARY_PATH"
-          file "$SDK_DIR/staging_dir/host/bin/apk"
+          (unset LD_LIBRARY_PATH; file "$SDK_DIR/staging_dir/host/bin/apk")
           apk --version
 
       - name: Package x86_64 (tar.gz + apk + ipk)
