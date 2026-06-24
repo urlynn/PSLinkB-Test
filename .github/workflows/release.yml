@@ -16,6 +16,9 @@ on:
 permissions:
   contents: write
 
+env:
+  ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: 'true'
+
 jobs:
   package-x86_64:
     runs-on: ubuntu-latest
@@ -349,6 +352,45 @@ jobs:
         run: |
           V="${V#v}"; ls -la /tmp/out/ && echo "openwrt done"
 
+      - name: Package luci-app
+        run: |
+          set -e
+          SRC=./luci-app-pslinkb
+          if [ ! -d "$SRC" ] || [ ! -f "$SRC/VERSION" ]; then echo "SKIP: no luci source"; exit 0; fi
+          LVER=$(tr -d '\n' < "$SRC/VERSION")
+          rm -rf /tmp/lp && mkdir -p /tmp/lp
+          [ -d "$SRC/root" ] && (cd "$SRC/root" && tar cf - . 2>/dev/null | tar xf - -C /tmp/lp) || true
+          [ -d "$SRC/htdocs" ] && (mkdir -p /tmp/lp/www && cp -a "$SRC/htdocs/." /tmp/lp/www/ 2>/dev/null) || true
+          echo "=== luci-app files ===" && find /tmp/lp -type f | sort
+          tar czf "/tmp/out/luci-app-pslinkb-${LVER}.tar.gz" -C /tmp/lp .
+          apk mkpkg \
+            --info "name:luci-app-pslinkb" \
+            --info "version:${LVER}" \
+            --info "arch:noarch" \
+            --info "depends:pslinkb" \
+            --files /tmp/lp \
+            --output "/tmp/out/luci-app-pslinkb-${LVER}.apk"
+          rm -rf /tmp/li && cp -a /tmp/lp /tmp/li; mkdir -p /tmp/li/CONTROL
+          printf 'Package: luci-app-pslinkb\nVersion: %s\nArchitecture: all\nDepends: pslinkb\n' "$LVER" > /tmp/li/CONTROL/control
+          tar czf /tmp/ctl.tar.gz -C /tmp/li/CONTROL .; rm -rf /tmp/li/CONTROL
+          tar czf /tmp/dat.tar.gz -C /tmp/li .; echo 2.0 > /tmp/db
+          ar r "/tmp/out/luci-app-pslinkb-${LVER}.ipk" /tmp/db /tmp/ctl.tar.gz /tmp/dat.tar.gz
+          rm -rf /tmp/li /tmp/lp /tmp/ctl.tar.gz /tmp/dat.tar.gz /tmp/db
+          echo "luci-app done"
+          ls -la /tmp/out/
+
+      - name: Verify luci APK
+        run: |
+          set -e
+          curl -sL https://downloads.openwrt.org/snapshots/targets/x86/64/openwrt-x86-64-rootfs.tar.gz -o /tmp/rootfs.tar.gz
+          mkdir -p /tmp/owrtl && sudo tar xzf /tmp/rootfs.tar.gz -C /tmp/owrtl --exclude='dev/*'
+          sudo mkdir -p /tmp/owrtl/tmp /tmp/owrtl/dev
+          APK=$(ls /tmp/out/luci-app-pslinkb-*.apk 2>/dev/null | head -1)
+          [ -z "$APK" ] && echo "ERROR: no luci APK found" && exit 1
+          sudo cp "$APK" /tmp/owrtl/tmp/test.apk
+          sudo chroot /tmp/owrtl /usr/bin/sh -c "apk add --allow-untrusted /tmp/test.apk"
+          echo "luci APK OK"
+
       - uses: actions/upload-artifact@v4
         with:
           name: pkgs-openwrt
@@ -531,83 +573,8 @@ jobs:
           path: /tmp/out/
           retention-days: 30
 
-  package-luci:
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    env:
-      V: ${{ inputs.version }}
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install OpenWRT SDK apk tool
-        run: |
-          sudo apt-get install -y zstd
-          BASE="https://downloads.openwrt.org/snapshots/targets/x86/64"
-          SDK_NAME=$(curl -sL "$BASE/" | grep -oP 'openwrt-sdk[^"]*tar\.zst' | head -1)
-          [ -n "$SDK_NAME" ] || { echo "ERROR: SDK not found at $BASE/"; curl -sL "$BASE/"; exit 1; }
-          echo "SDK: $SDK_NAME"
-          curl -sL "$BASE/$SDK_NAME" -o /tmp/sdk.tar.zst
-          rm -rf /tmp/sdk && mkdir -p /tmp/sdk
-          zstd -d /tmp/sdk.tar.zst -o /tmp/sdk.tar
-          tar -xf /tmp/sdk.tar -C /tmp/sdk/
-          SDK_DIR=$(ls -d /tmp/sdk/openwrt-sdk-*)
-          rm -rf /tmp/sdk.tar.zst /tmp/sdk.tar
-          export PATH="$SDK_DIR/staging_dir/host/bin:$PATH"
-          export LD_LIBRARY_PATH="$SDK_DIR/staging_dir/host/lib:$LD_LIBRARY_PATH"
-          file "$SDK_DIR/staging_dir/host/bin/apk"
-          apk --version
-
-      - name: Package luci-app
-        run: |
-          set -e; OUT=/tmp/out; rm -rf "$OUT" && mkdir -p "$OUT"
-          SRC=./luci-app-pslinkb
-          if [ ! -d "$SRC" ] || [ ! -f "$SRC/VERSION" ]; then echo "SKIP: no luci source"; exit 0; fi
-          LVER=$(tr -d '\n' < "$SRC/VERSION")
-          rm -rf /tmp/lp && mkdir -p /tmp/lp
-          [ -d "$SRC/root" ] && (cd "$SRC/root" && tar cf - . 2>/dev/null | tar xf - -C /tmp/lp) || true
-          [ -d "$SRC/htdocs" ] && (mkdir -p /tmp/lp/www && cp -a "$SRC/htdocs/." /tmp/lp/www/ 2>/dev/null) || true
-
-          echo "=== luci-app files ===" && find /tmp/lp -type f | sort
-
-          tar czf "${OUT}/luci-app-pslinkb-${LVER}.tar.gz" -C /tmp/lp .
-
-          apk mkpkg \
-            --info "name:luci-app-pslinkb" \
-            --info "version:${LVER}" \
-            --info "arch:noarch" \
-            --info "depends:pslinkb" \
-            --files /tmp/lp \
-            --output "${OUT}/luci-app-pslinkb-${LVER}.apk"
-
-          rm -rf /tmp/li && cp -a /tmp/lp /tmp/li; mkdir -p /tmp/li/CONTROL
-          printf 'Package: luci-app-pslinkb\nVersion: %s\nArchitecture: all\nDepends: pslinkb\n' "$LVER" > /tmp/li/CONTROL/control
-          tar czf /tmp/ctl.tar.gz -C /tmp/li/CONTROL .; rm -rf /tmp/li/CONTROL
-          tar czf /tmp/dat.tar.gz -C /tmp/li .; echo 2.0 > /tmp/db
-          ar r "${OUT}/luci-app-pslinkb-${LVER}.ipk" /tmp/db /tmp/ctl.tar.gz /tmp/dat.tar.gz
-          rm -rf /tmp/li /tmp/lp /tmp/ctl.tar.gz /tmp/dat.tar.gz /tmp/db
-          echo "luci-app done"
-          ls -la "$OUT/"
-
-      - name: Verify APK (luci-app)
-        run: |
-          set -e
-          curl -sL https://downloads.openwrt.org/snapshots/targets/x86/64/openwrt-x86-64-rootfs.tar.gz -o /tmp/rootfs.tar.gz
-          mkdir -p /tmp/owrt && sudo tar xzf /tmp/rootfs.tar.gz -C /tmp/owrt --exclude='dev/*'
-          sudo mkdir -p /tmp/owrt/tmp /tmp/owrt/dev
-          APK=$(ls /tmp/out/luci-app-pslinkb-*.apk 2>/dev/null | head -1)
-          [ -z "$APK" ] && echo "ERROR: no luci APK found" && exit 1
-          sudo cp "$APK" /tmp/owrt/tmp/test.apk
-          sudo chroot /tmp/owrt /usr/bin/sh -c "apk add --allow-untrusted /tmp/test.apk"
-          echo "luci APK OK"
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: pkgs-luci
-          path: /tmp/out/
-          retention-days: 30
-
   release:
-    needs: [package-x86_64, package-aarch64, package-openwrt, package-windows, package-macos-aarch64, package-macos-x86_64, package-luci]
+    needs: [package-x86_64, package-aarch64, package-openwrt, package-windows, package-macos-aarch64, package-macos-x86_64]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
