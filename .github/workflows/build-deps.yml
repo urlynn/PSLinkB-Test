@@ -41,7 +41,7 @@ jobs:
             --disable-iconv --disable-lzma --disable-bzlib --disable-zlib --disable-runtime-cpudetect
           make -j$(nproc) && make install
           mkdir -p /tmp/ffbuild/bin
-          musl-gcc -O2 -static -U_FORTIFY_SOURCE -DSTREAM_VERSION=\"0.1.1\" \
+          musl-gcc -O2 -static -U_FORTIFY_SOURCE \
             /tmp/stream_copy.c \
             -I/tmp/ffbuild/include -L/tmp/ffbuild/lib \
             -lavformat -lavcodec -lavutil \
@@ -83,14 +83,17 @@ jobs:
             --disable-iconv --disable-lzma --disable-bzlib --disable-zlib --disable-runtime-cpudetect
           make -j$(nproc) && make install
           mkdir -p /tmp/ffbuild/bin
-          musl-gcc -O2 -static -DSTREAM_VERSION=\"0.1.1\" \
+          musl-gcc -O2 -static -U_FORTIFY_SOURCE \
             /tmp/stream_copy.c \
             -I/tmp/ffbuild/include -L/tmp/ffbuild/lib \
             -lavformat -lavcodec -lavutil \
             -o /tmp/ffbuild/bin/pslinkb-stream
-      - name: Verify
+      - name: Verify - version + musl
         run: |
-          /tmp/ffbuild/bin/pslinkb-stream --version
+          BIN=/tmp/ffbuild/bin/pslinkb-stream
+          "$BIN" --version
+          file "$BIN" | grep -q 'statically linked' || { echo "ERROR: not static"; exit 1; }
+          strings "$BIN" | grep -c GLIBC | grep -qx 0 || { echo "ERROR: linked against glibc"; exit 1; }
           echo "linux-aarch64 OK"
       - uses: actions/upload-artifact@v4
         with:
@@ -207,7 +210,6 @@ jobs:
           mkdir -p /tmp/ffbuild/bin
           export PKG_CONFIG_PATH=/tmp/ffbuild/lib/pkgconfig
           gcc -O2 -static \
-            -DSTREAM_VERSION=\"0.1.1\" \
             /tmp/stream_copy.c \
             $(pkg-config --cflags --libs --static libavformat libavcodec libavutil) \
             -o /tmp/ffbuild/bin/pslinkb-stream.exe
@@ -253,7 +255,6 @@ jobs:
           make -j4 && make install
           mkdir -p /tmp/ffbuild/bin
           gcc -O2 -flto \
-            -DSTREAM_VERSION=\"0.1.1\" \
             -I/tmp/ffbuild/include -L/tmp/ffbuild/lib \
             /tmp/stream_copy.c \
             -lavformat -lavcodec -lavutil \
