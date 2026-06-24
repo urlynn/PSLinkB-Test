@@ -110,6 +110,34 @@ jobs:
         run: |
           V="${V#v}"; ls -la /tmp/out/ && echo "${ARCH} done"
 
+      - name: Verify bundle
+        run: |
+          V="${V#v}"; set -e
+          tar --zstd -xf "/tmp/out/pslinkb-${V}-${ARCH}-unknown-linux-musl-bundle.tar.zst" -C /tmp/bcheck
+          /tmp/bcheck/pslinkb --version
+          echo "bundle OK"
+
+      - name: Verify deb
+        run: |
+          V="${V#v}"; set -e
+          mkdir -p /tmp/dcheck && ar x "/tmp/out/pslinkb-${V}-${ARCH}-debian.deb" --output=/tmp/dcheck
+          tar xzf /tmp/dcheck/data.tar.gz -C /tmp/dcheck
+          /tmp/dcheck/usr/bin/pslinkb --version
+          echo "deb OK"
+
+      - name: Verify arch
+        run: |
+          V="${V#v}"; set -e
+          mkdir -p /tmp/acheck
+          tar --zstd -xf "/tmp/out/pslinkb-${V}-${ARCH}-archlinux.pkg.tar.zst" -C /tmp/acheck
+          /tmp/acheck/usr/bin/pslinkb --version
+          echo "arch OK"
+
+      - name: Verify portable
+        run: |
+          V="${V#v}"
+          "/tmp/out/pslinkb-${V}-${ARCH}-unknown-linux-musl-portable" --version && echo "portable OK"
+
       - uses: actions/upload-artifact@v4
         with:
           name: pkgs-x86_64
@@ -203,6 +231,34 @@ jobs:
       - name: List output
         run: |
           V="${V#v}"; ls -la /tmp/out/ && echo "${ARCH} done"
+
+      - name: Verify bundle
+        run: |
+          V="${V#v}"; set -e
+          tar --zstd -xf "/tmp/out/pslinkb-${V}-${ARCH}-unknown-linux-musl-bundle.tar.zst" -C /tmp/bcheck
+          /tmp/bcheck/pslinkb --version
+          echo "bundle OK"
+
+      - name: Verify deb
+        run: |
+          V="${V#v}"; set -e
+          mkdir -p /tmp/dcheck && ar x "/tmp/out/pslinkb-${V}-${ARCH}-debian.deb" --output=/tmp/dcheck
+          tar xzf /tmp/dcheck/data.tar.gz -C /tmp/dcheck
+          /tmp/dcheck/usr/bin/pslinkb --version
+          echo "deb OK"
+
+      - name: Verify arch
+        run: |
+          V="${V#v}"; set -e
+          mkdir -p /tmp/acheck
+          tar --zstd -xf "/tmp/out/pslinkb-${V}-${ARCH}-archlinux.pkg.tar.zst" -C /tmp/acheck
+          /tmp/acheck/usr/bin/pslinkb --version
+          echo "arch OK"
+
+      - name: Verify portable
+        run: |
+          V="${V#v}"
+          "/tmp/out/pslinkb-${V}-${ARCH}-unknown-linux-musl-portable" --version && echo "portable OK"
 
       - uses: actions/upload-artifact@v4
         with:
