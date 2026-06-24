@@ -99,9 +99,9 @@ jobs:
             -p 'pslinkb-deps-macos-aarch64.tar.gz' -D /tmp/ --clobber
           mkdir -p /tmp/deps
           tar xzf /tmp/pslinkb-deps-macos-aarch64.tar.gz -C /tmp/deps/
-          if [ -d /tmp/deps/ffbuild/aarch64-macos ]; then
+          if [ -d /tmp/deps/ffbuild/lib ]; then
             rm -rf ffbuild/macos-aarch64 && mkdir -p ffbuild/macos-aarch64
-            cp -a /tmp/deps/ffbuild/aarch64-macos/. ffbuild/macos-aarch64/
+            cp -a /tmp/deps/ffbuild/. ffbuild/macos-aarch64/
             echo "=== FFmpeg deps ===" && ls -la ffbuild/macos-aarch64/lib/libav*.a
           else
             echo "ERROR: macOS aarch64 FFmpeg not found in deps"
@@ -134,9 +134,9 @@ jobs:
             -p 'pslinkb-deps-macos-x86_64.tar.gz' -D /tmp/ --clobber
           mkdir -p /tmp/deps
           tar xzf /tmp/pslinkb-deps-macos-x86_64.tar.gz -C /tmp/deps/
-          if [ -d /tmp/deps/ffbuild/x86_64-macos ]; then
+          if [ -d /tmp/deps/ffbuild/lib ]; then
             rm -rf ffbuild/macos-x86_64 && mkdir -p ffbuild/macos-x86_64
-            cp -a /tmp/deps/ffbuild/x86_64-macos/. ffbuild/macos-x86_64/
+            cp -a /tmp/deps/ffbuild/. ffbuild/macos-x86_64/
             echo "=== FFmpeg deps ===" && ls -la ffbuild/macos-x86_64/lib/libav*.a
           else
             echo "ERROR: macOS x86_64 FFmpeg not found in deps"

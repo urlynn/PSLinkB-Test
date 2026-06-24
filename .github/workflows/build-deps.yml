@@ -68,10 +68,10 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          mkdir -p /tmp/pkg/stream/x86_64-linux-musl
-          cp /tmp/ffbuild/bin/pslinkb-stream /tmp/pkg/stream/x86_64-linux-musl/
-          cp -r /tmp/ffbuild/lib /tmp/pkg/
-          cp -r /tmp/ffbuild/include /tmp/pkg/
+          mkdir -p /tmp/pkg/stream /tmp/pkg/ffbuild
+          cp /tmp/ffbuild/bin/pslinkb-stream /tmp/pkg/stream/pslinkb-stream
+          cp -r /tmp/ffbuild/lib /tmp/pkg/ffbuild/
+          cp -r /tmp/ffbuild/include /tmp/pkg/ffbuild/
           tar czf /tmp/pslinkb-deps-linux-x86_64.tar.gz -C /tmp/pkg .
           TAG="build-deps"
           gh release view "$TAG" --repo ${{ github.repository }} 2>/dev/null || \
@@ -129,10 +129,10 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          mkdir -p /tmp/pkg/stream/aarch64-linux-musl
-          cp /tmp/ffbuild/bin/pslinkb-stream /tmp/pkg/stream/aarch64-linux-musl/
-          cp -r /tmp/ffbuild/lib /tmp/pkg/
-          cp -r /tmp/ffbuild/include /tmp/pkg/
+          mkdir -p /tmp/pkg/stream /tmp/pkg/ffbuild
+          cp /tmp/ffbuild/bin/pslinkb-stream /tmp/pkg/stream/pslinkb-stream
+          cp -r /tmp/ffbuild/lib /tmp/pkg/ffbuild/
+          cp -r /tmp/ffbuild/include /tmp/pkg/ffbuild/
           tar czf /tmp/pslinkb-deps-linux-aarch64.tar.gz -C /tmp/pkg .
           TAG="build-deps"
           gh release view "$TAG" --repo ${{ github.repository }} 2>/dev/null || \
@@ -169,9 +169,9 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          mkdir -p /tmp/pkg/ffbuild/aarch64-macos
-          cp -r /tmp/ffbuild/lib /tmp/pkg/ffbuild/aarch64-macos/
-          cp -r /tmp/ffbuild/include /tmp/pkg/ffbuild/aarch64-macos/
+          mkdir -p /tmp/pkg/ffbuild
+          cp -r /tmp/ffbuild/lib /tmp/pkg/ffbuild/
+          cp -r /tmp/ffbuild/include /tmp/pkg/ffbuild/
           tar czf /tmp/pslinkb-deps-macos-aarch64.tar.gz -C /tmp/pkg .
           TAG="build-deps"
           gh release view "$TAG" --repo ${{ github.repository }} 2>/dev/null || \
@@ -208,9 +208,9 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          mkdir -p /tmp/pkg/ffbuild/x86_64-macos
-          cp -r /tmp/ffbuild/lib /tmp/pkg/ffbuild/x86_64-macos/
-          cp -r /tmp/ffbuild/include /tmp/pkg/ffbuild/x86_64-macos/
+          mkdir -p /tmp/pkg/ffbuild
+          cp -r /tmp/ffbuild/lib /tmp/pkg/ffbuild/
+          cp -r /tmp/ffbuild/include /tmp/pkg/ffbuild/
           tar czf /tmp/pslinkb-deps-macos-x86_64.tar.gz -C /tmp/pkg .
           TAG="build-deps"
           gh release view "$TAG" --repo ${{ github.repository }} 2>/dev/null || \
@@ -281,8 +281,8 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          mkdir -p /tmp/pkg/stream/x86_64-windows
-          cp /tmp/ffbuild/bin/pslinkb-stream.exe /tmp/pkg/stream/x86_64-windows/
+          mkdir -p /tmp/pkg/stream
+          cp /tmp/ffbuild/bin/pslinkb-stream.exe /tmp/pkg/stream/pslinkb-stream.exe
           tar czf /tmp/pslinkb-deps-windows-x86_64.tar.gz -C /tmp/pkg .
           TAG="build-deps"
           gh release view "$TAG" --repo ${{ github.repository }} 2>/dev/null || \
@@ -330,8 +330,8 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          mkdir -p /tmp/pkg/stream/aarch64-windows
-          cp /tmp/ffbuild/bin/pslinkb-stream.exe /tmp/pkg/stream/aarch64-windows/
+          mkdir -p /tmp/pkg/stream
+          cp /tmp/ffbuild/bin/pslinkb-stream.exe /tmp/pkg/stream/pslinkb-stream.exe
           tar czf /tmp/pslinkb-deps-windows-aarch64.tar.gz -C /tmp/pkg .
           TAG="build-deps"
           gh release view "$TAG" --repo ${{ github.repository }} 2>/dev/null || \
