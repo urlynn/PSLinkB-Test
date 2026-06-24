@@ -59,15 +59,16 @@ jobs:
           file "$BIN" | grep -q 'statically linked' || { echo "ERROR: not static"; exit 1; }
           strings "$BIN" | grep -c GLIBC | grep -qx 0 || { echo "ERROR: linked against glibc"; exit 1; }
           echo "linux-x86_64 OK"
-      - name: Upload binary
+      - name: Upload
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           cp /tmp/ffbuild/bin/pslinkb-stream /tmp/pslinkb-stream-linux-x86_64
+          tar czf /tmp/ffbuild-linux-x86_64.tar.gz -C /tmp/ffbuild lib/ include/
           TAG="build-deps"
           gh release view "$TAG" --repo ${{ github.repository }} 2>/dev/null || \
             gh release create "$TAG" --repo ${{ github.repository }} --title "Build Dependencies" --notes "pslinkb-stream + FFmpeg static libs — CI built"
-          gh release upload "$TAG" /tmp/pslinkb-stream-linux-x86_64 --repo ${{ github.repository }} --clobber
+          gh release upload "$TAG" /tmp/pslinkb-stream-linux-x86_64 /tmp/ffbuild-linux-x86_64.tar.gz --repo ${{ github.repository }} --clobber
 
   linux-aarch64:
     if: ${{ inputs.platform == 'all' || inputs.platform == 'linux-aarch64' }}
@@ -116,15 +117,16 @@ jobs:
           file "$BIN" | grep -q 'statically linked' || { echo "ERROR: not static"; exit 1; }
           strings "$BIN" | grep -c GLIBC | grep -qx 0 || { echo "ERROR: linked against glibc"; exit 1; }
           echo "linux-aarch64 OK"
-      - name: Upload binary
+      - name: Upload
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           cp /tmp/ffbuild/bin/pslinkb-stream /tmp/pslinkb-stream-linux-aarch64
+          tar czf /tmp/ffbuild-linux-aarch64.tar.gz -C /tmp/ffbuild lib/ include/
           TAG="build-deps"
           gh release view "$TAG" --repo ${{ github.repository }} 2>/dev/null || \
             gh release create "$TAG" --repo ${{ github.repository }} --title "Build Dependencies" --notes "pslinkb-stream + FFmpeg static libs — CI built"
-          gh release upload "$TAG" /tmp/pslinkb-stream-linux-aarch64 --repo ${{ github.repository }} --clobber
+          gh release upload "$TAG" /tmp/pslinkb-stream-linux-aarch64 /tmp/ffbuild-linux-aarch64.tar.gz --repo ${{ github.repository }} --clobber
 
   macos-aarch64:
     if: ${{ inputs.platform == 'all' || inputs.platform == 'macos-aarch64' }}
