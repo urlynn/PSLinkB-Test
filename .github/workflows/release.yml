@@ -285,22 +285,25 @@ jobs:
             echo "$3  /tmp/sdk-cache/$4.tar.zst" | sha256sum -c
           }
           download 'https://downloads.openwrt.org/snapshots/targets/x86/64' \
-                   '${{ steps.sdk.outputs.apk_x86_file }}' '${{ steps.sdk.outputs.apk_x86_hash }}' openwrt-sdk-apk-x86_64
+                   '${{ steps.sdk.outputs.apk_x86_file }}' '${{ steps.sdk.outputs.apk_x86_hash }}' sdk-apk-x86_64
           download 'https://downloads.openwrt.org/snapshots/targets/armsr/armv8/' \
-                   '${{ steps.sdk.outputs.apk_armsr_file }}' '${{ steps.sdk.outputs.apk_armsr_hash }}' openwrt-sdk-apk-armsr
+                   '${{ steps.sdk.outputs.apk_armsr_file }}' '${{ steps.sdk.outputs.apk_armsr_hash }}' sdk-apk-armsr
           download 'https://downloads.openwrt.org/releases/24.10.7/targets/x86/64' \
-                   '${{ steps.sdk.outputs.opkg_x86_file }}' '${{ steps.sdk.outputs.opkg_x86_hash }}' openwrt-sdk-opkg-x86_64
+                   '${{ steps.sdk.outputs.opkg_x86_file }}' '${{ steps.sdk.outputs.opkg_x86_hash }}' sdk-opkg-x86_64
           download 'https://downloads.openwrt.org/releases/24.10.7/targets/armsr/armv8' \
-                   '${{ steps.sdk.outputs.opkg_armsr_file }}' '${{ steps.sdk.outputs.opkg_armsr_hash }}' openwrt-sdk-opkg-armsr
+                   '${{ steps.sdk.outputs.opkg_armsr_file }}' '${{ steps.sdk.outputs.opkg_armsr_hash }}' sdk-opkg-armsr
 
       - name: Setup SDKs
         run: |
           setup() {
             set -e
-            rm -rf "/tmp/sdk-setup-$1" && mkdir "/tmp/sdk-setup-$1"
-            zstd -d "/tmp/sdk-cache/$1.tar.zst" -o "/tmp/sdk-setup-$1/sdk.tar"
-            tar -xf "/tmp/sdk-setup-$1/sdk.tar" -C "/tmp/sdk-setup-$1/"
-            DIR=$(ls -d "/tmp/sdk-setup-$1/openwrt-sdk-*")
+            rm -rf "/tmp/openwrt-sdk/$1"
+            mkdir -p "/tmp/openwrt-sdk/$1"
+            zstd -d "/tmp/sdk-cache/$1.tar.zst" -o "/tmp/openwrt-sdk/$1/sdk.tar"
+            tar -xf "/tmp/openwrt-sdk/$1/sdk.tar" -C "/tmp/openwrt-sdk/$1/"
+            mv "/tmp/openwrt-sdk/$1"/openwrt-sdk-* "/tmp/openwrt-sdk/$1/sdk"
+            DIR="/tmp/openwrt-sdk/$1/sdk"
+            [ -f "$DIR/staging_dir/host/bin/.apk.bin" ] || { echo "ERROR: SDK not found at $DIR"; exit 1; }
             cat > "/usr/local/bin/$2" << EOF
           #!/bin/sh
           LD_PRELOAD=$DIR/staging_dir/host/lib/runas.so \
@@ -310,13 +313,13 @@ jobs:
           EOF
             chmod +x "/usr/local/bin/$2"
           }
-          setup openwrt-sdk-apk-x86_64 openwrt-apk-x86_64
+          setup sdk-apk-x86_64 openwrt-apk-x86_64
           openwrt-apk-x86_64 --version
-          setup openwrt-sdk-apk-armsr openwrt-apk-armsr
+          setup sdk-apk-armsr openwrt-apk-armsr
           openwrt-apk-armsr --version
-          setup openwrt-sdk-opkg-x86_64 openwrt-ipk-x86_64
+          setup sdk-opkg-x86_64 openwrt-ipk-x86_64
           openwrt-ipk-x86_64 --version
-          setup openwrt-sdk-opkg-armsr openwrt-ipk-armsr
+          setup sdk-opkg-armsr openwrt-ipk-armsr
           openwrt-ipk-armsr --version
 
       - name: Package x86_64 (tar.gz + apk + ipk)
