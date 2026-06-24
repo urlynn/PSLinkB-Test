@@ -474,7 +474,9 @@ jobs:
           key: sdk-apk-x86-${{ steps.sdk.outputs.apk_x86_hash }}
       - uses: actions/cache@v4
         id: cache-apk-armsr
-        with: { path: /tmp/sdk-cache, key: sdk-apk-armsr-${{ steps.sdk.outputs.apk_armsr_hash }} }
+         with:
+           key: sdk-apk-armsr-${{ steps.sdk.outputs.apk_armsr_hash }}
+           path: /tmp/sdk-cache
       - name: Download SDKs
         run: |
           mkdir -p /tmp/sdk-cache
@@ -555,10 +557,14 @@ jobs:
           resolve 'https://downloads.openwrt.org/releases/24.10.7/targets/armsr/armv8/' 'https://downloads.openwrt.org/releases/24.10.7/targets/armsr/armv8/sha256sums' opkg_armsr
       - uses: actions/cache@v4
         id: cache-opkg-x86
-        with: { path: /tmp/sdk-cache, key: sdk-opkg-x86-${{ steps.sdk.outputs.opkg_x86_hash }} }
+         with:
+           key: sdk-opkg-x86-${{ steps.sdk.outputs.opkg_x86_hash }}
+           path: /tmp/sdk-cache
       - uses: actions/cache@v4
         id: cache-opkg-armsr
-        with: { path: /tmp/sdk-cache, key: sdk-opkg-armsr-${{ steps.sdk.outputs.opkg_armsr_hash }} }
+         with:
+           key: sdk-opkg-armsr-${{ steps.sdk.outputs.opkg_armsr_hash }}
+           path: /tmp/sdk-cache
       - name: Download SDKs
         run: |
           mkdir -p /tmp/sdk-cache
@@ -604,9 +610,13 @@ jobs:
       ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: 'true'
     steps:
       - uses: actions/download-artifact@v4
-        with: { name: pkgs-openwrt-ipk, path: /tmp/ipk }
+         with:
+           path: /tmp/ipk
+           name: pkgs-openwrt-ipk
       - uses: actions/download-artifact@v4
-        with: { name: pkgs-openwrt-apk, path: /tmp/apk }
+         with:
+           path: /tmp/apk
+           name: pkgs-openwrt-apk
       - name: Verify IPK
         run: |
           set -e; arch=x86_64
@@ -638,9 +648,13 @@ jobs:
       ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: 'true'
     steps:
       - uses: actions/download-artifact@v4
-        with: { name: pkgs-openwrt-ipk, path: /tmp/ipk }
+         with:
+           path: /tmp/ipk
+           name: pkgs-openwrt-ipk
       - uses: actions/download-artifact@v4
-        with: { name: pkgs-openwrt-apk, path: /tmp/apk }
+         with:
+           path: /tmp/apk
+           name: pkgs-openwrt-apk
       - name: Verify IPK
         run: |
           set -e; arch=aarch64
@@ -680,7 +694,9 @@ jobs:
           resolve 'https://downloads.openwrt.org/releases/25.12.4/targets/x86/64/' 'https://downloads.openwrt.org/releases/25.12.4/targets/x86/64/sha256sums' apk_x86
       - uses: actions/cache@v4
         id: cache-luci
-        with: { path: /tmp/sdk-cache, key: sdk-apk-x86-${{ steps.sdk.outputs.apk_x86_hash }} }
+         with:
+           key: sdk-apk-x86-${{ steps.sdk.outputs.apk_x86_hash }}
+           path: /tmp/sdk-cache
       - name: Download SDK
         run: |
           mkdir -p /tmp/sdk-cache
