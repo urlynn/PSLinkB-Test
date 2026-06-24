@@ -255,8 +255,11 @@ jobs:
         id: sdk
         run: |
           sudo apt-get install -y zstd
-          HASH=$(curl -sL 'https://downloads.openwrt.org/snapshots/targets/x86/64/sha256sums' | awk '/openwrt-sdk/{print $1;exit}')
+          LINE=$(curl -sL 'https://downloads.openwrt.org/snapshots/targets/x86/64/sha256sums' | awk '/openwrt-sdk/{print;exit}')
+          HASH=$(echo "$LINE" | awk '{print $1}')
+          FILE=$(echo "$LINE" | cut -d'*' -f2 | tr -d ' ')
           echo "hash=$HASH" >> "$GITHUB_OUTPUT"
+          echo "file=$FILE" >> "$GITHUB_OUTPUT"
 
       - uses: actions/cache@v4
         id: cache
@@ -268,8 +271,8 @@ jobs:
         if: steps.cache.outputs.cache-hit != 'true'
         run: |
           mkdir -p /tmp/sdk-cache
-          URL='https://downloads.openwrt.org/snapshots/targets/x86/64/openwrt-sdk-x86-64_gcc-14.3.0_musl.Linux-x86_64.tar.zst'
-          curl -L --retry 3 -o /tmp/sdk-cache/sdk.tar.zst "$URL"
+          BASE="https://downloads.openwrt.org/snapshots/targets/x86/64"
+          curl -L --retry 3 -o /tmp/sdk-cache/sdk.tar.zst "$BASE/${{ steps.sdk.outputs.file }}"
           echo "${{ steps.sdk.outputs.hash }}  /tmp/sdk-cache/sdk.tar.zst" | sha256sum -c
 
       - name: Setup SDK
