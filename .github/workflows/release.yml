@@ -73,8 +73,14 @@ jobs:
 
       - name: Verify stream
         run: |
+          set -e
           S="/tmp/deps/stream/${ARCH}-linux-musl/pslinkb-stream"
-          if [ -f "$S" ]; then "$S" --version && echo "stream OK: $ARCH"; else echo "WARN: no stream"; fi
+          if [ -f "$S" ]; then
+            "$S" --version
+            echo "stream OK: $ARCH"
+          else
+            echo "WARN: no stream"
+          fi
 
       - name: Package openwrt.tar.gz
         run: |
@@ -255,8 +261,14 @@ jobs:
 
       - name: Verify stream
         run: |
+          set -e
           S="/tmp/deps/stream/${ARCH}-linux-musl/pslinkb-stream"
-          if [ -f "$S" ]; then "$S" --version && echo "stream OK: $ARCH"; else echo "WARN: no stream"; fi
+          if [ -f "$S" ]; then
+            "$S" --version
+            echo "stream OK: $ARCH"
+          else
+            echo "WARN: no stream"
+          fi
 
       - name: Package openwrt.tar.gz
         run: |
@@ -413,10 +425,16 @@ jobs:
       - name: Verify stream
         shell: bash
         run: |
+          set -e
           [ -f /tmp/pslinkb-build-deps.tar.gz ] || { echo "WARN: no deps"; exit 0; }
-          mkdir -p /tmp/deps && tar xzf /tmp/pslinkb-build-deps.tar.gz -C /tmp/deps
+          mkdir -p /tmp/deps && tar --no-xattrs -xzf /tmp/pslinkb-build-deps.tar.gz -C /tmp/deps
           S="/tmp/deps/stream/x86_64-windows/pslinkb-stream.exe"
-          if [ -f "$S" ]; then "$S" --version && echo "stream OK: windows"; else echo "WARN: no stream"; fi
+          if [ -f "$S" ]; then
+            "$S" --version
+            echo "stream OK: windows"
+          else
+            echo "WARN: no stream"
+          fi
 
       - name: Package
         shell: bash
