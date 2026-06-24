@@ -58,6 +58,7 @@ jobs:
           tar -xf /tmp/extract-apk/sdk.tar -C /tmp/extract-apk/
           SDK=$(ls -d /tmp/extract-apk/openwrt-sdk-*)
           mkdir -p /tmp/tools-apk/bin /tmp/tools-apk/lib
+          cp "$SDK/staging_dir/host/bin/apk" /tmp/tools-apk/bin/
           cp "$SDK/staging_dir/host/bin/.apk.bin" /tmp/tools-apk/bin/
           cp "$SDK/staging_dir/host/lib/runas.so" /tmp/tools-apk/lib/
           cp "$SDK/staging_dir/host/lib/ld-linux-x86-64.so.2" /tmp/tools-apk/lib/
@@ -65,7 +66,7 @@ jobs:
           ls -lh /tmp/openwrt-apk-tools.tar.gz
           rm -rf /tmp/extract-apk /tmp/tools-apk
 
-      - name: Extract IPK tools (ipkg-build)
+      - name: Extract IPK tools (ipkg-build + opkg)
         run: |
           rm -rf /tmp/extract-opkg && mkdir /tmp/extract-opkg
           zstd -d /tmp/sdk-cache/sdk-opkg.tar.zst -o /tmp/extract-opkg/sdk.tar
@@ -73,6 +74,7 @@ jobs:
           SDK=$(ls -d /tmp/extract-opkg/openwrt-sdk-*)
           mkdir -p /tmp/tools-opkg/bin
           cp "$SDK/scripts/ipkg-build" /tmp/tools-opkg/bin/
+          cp "$SDK/staging_dir/host/bin/opkg" /tmp/tools-opkg/bin/
           tar czf /tmp/openwrt-opkg-tools.tar.gz -C /tmp/tools-opkg .
           ls -lh /tmp/openwrt-opkg-tools.tar.gz
           rm -rf /tmp/extract-opkg /tmp/tools-opkg
