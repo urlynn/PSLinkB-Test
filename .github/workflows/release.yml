@@ -255,43 +255,47 @@ jobs:
         id: sdk
         run: |
           sudo apt-get install -y zstd
-          resolve() { # usage: resolve <dir-url> <sha256sums-url> <output-prefix>
+          resolve() {
             F=$(curl -sL "$1" | grep -oP 'openwrt-sdk[^"]*tar\.zst' | head -1)
             H=$(curl -sL "$2" | grep -F "$F" | awk '{print $1;exit}')
             echo "${3}_file=$F" >> "$GITHUB_OUTPUT"
             echo "${3}_hash=$H" >> "$GITHUB_OUTPUT"
           }
           resolve 'https://downloads.openwrt.org/snapshots/targets/x86/64/' \
-                  'https://downloads.openwrt.org/snapshots/targets/x86/64/sha256sums' snap
+                  'https://downloads.openwrt.org/snapshots/targets/x86/64/sha256sums' apk_x86
+          resolve 'https://downloads.openwrt.org/snapshots/targets/armsr/armv8/' \
+                  'https://downloads.openwrt.org/snapshots/targets/armsr/armv8/sha256sums' apk_armsr
           resolve 'https://downloads.openwrt.org/releases/24.10.7/targets/x86/64/' \
-                  'https://downloads.openwrt.org/releases/24.10.7/targets/x86/64/sha256sums' ipk_x86
+                  'https://downloads.openwrt.org/releases/24.10.7/targets/x86/64/sha256sums' opkg_x86
           resolve 'https://downloads.openwrt.org/releases/24.10.7/targets/armsr/armv8/' \
-                  'https://downloads.openwrt.org/releases/24.10.7/targets/armsr/armv8/sha256sums' ipk_armsr
+                  'https://downloads.openwrt.org/releases/24.10.7/targets/armsr/armv8/sha256sums' opkg_armsr
 
       - uses: actions/cache@v4
         id: cache
         with:
           path: /tmp/sdk-cache
-          key: openwrt-sdk-${{ steps.sdk.outputs.snap_hash }}-${{ steps.sdk.outputs.ipk_x86_hash }}-${{ steps.sdk.outputs.ipk_armsr_hash }}
+          key: openwrt-sdk-${{ steps.sdk.outputs.apk_x86_hash }}-${{ steps.sdk.outputs.apk_armsr_hash }}-${{ steps.sdk.outputs.opkg_x86_hash }}-${{ steps.sdk.outputs.opkg_armsr_hash }}
 
       - name: Download SDKs
         if: steps.cache.outputs.cache-hit != 'true'
         run: |
           mkdir -p /tmp/sdk-cache
-          download() { # usage: download <base-url> <file> <hash> <cache-name>
+          download() {
             curl -L --retry 3 -o "/tmp/sdk-cache/$4.tar.zst" "$1/$2"
             echo "$3  /tmp/sdk-cache/$4.tar.zst" | sha256sum -c
           }
           download 'https://downloads.openwrt.org/snapshots/targets/x86/64' \
-                   '${{ steps.sdk.outputs.snap_file }}' '${{ steps.sdk.outputs.snap_hash }}' openwrt-sdk-snapshots-x86_64
+                   '${{ steps.sdk.outputs.apk_x86_file }}' '${{ steps.sdk.outputs.apk_x86_hash }}' openwrt-sdk-apk-x86_64
+          download 'https://downloads.openwrt.org/snapshots/targets/armsr/armv8/' \
+                   '${{ steps.sdk.outputs.apk_armsr_file }}' '${{ steps.sdk.outputs.apk_armsr_hash }}' openwrt-sdk-apk-armsr
           download 'https://downloads.openwrt.org/releases/24.10.7/targets/x86/64' \
-                   '${{ steps.sdk.outputs.ipk_x86_file }}' '${{ steps.sdk.outputs.ipk_x86_hash }}' openwrt-sdk-2410-x86_64
+                   '${{ steps.sdk.outputs.opkg_x86_file }}' '${{ steps.sdk.outputs.opkg_x86_hash }}' openwrt-sdk-opkg-x86_64
           download 'https://downloads.openwrt.org/releases/24.10.7/targets/armsr/armv8' \
-                   '${{ steps.sdk.outputs.ipk_armsr_file }}' '${{ steps.sdk.outputs.ipk_armsr_hash }}' openwrt-sdk-2410-armsr
+                   '${{ steps.sdk.outputs.opkg_armsr_file }}' '${{ steps.sdk.outputs.opkg_armsr_hash }}' openwrt-sdk-opkg-armsr
 
       - name: Setup SDKs
         run: |
-          setup() { # usage: setup <cache-name> <wrapper-name>
+          setup() {
             rm -rf "/tmp/sdk-$1" && mkdir "/tmp/sdk-$1"
             zstd -d "/tmp/sdk-cache/$1.tar.zst" -o "/tmp/sdk-$1/sdk.tar"
             tar -xf "/tmp/sdk-$1/sdk.tar" -C "/tmp/sdk-$1/"
@@ -305,12 +309,14 @@ jobs:
           EOF
             chmod +x "/usr/local/bin/$2"
           }
-          setup openwrt-sdk-snapshots-x86_64 openwrt-apk
-          openwrt-apk --version
-          setup openwrt-sdk-2410-x86_64 openwrt-apk-ipk-x86
-          openwrt-apk-ipk-x86 --version
-          setup openwrt-sdk-2410-armsr openwrt-apk-ipk-armsr
-          openwrt-apk-ipk-armsr --version
+          setup openwrt-sdk-apk-x86_64 openwrt-apk-x86_64
+          openwrt-apk-x86_64 --version
+          setup openwrt-sdk-apk-armsr openwrt-apk-armsr
+          openwrt-apk-armsr --version
+          setup openwrt-sdk-opkg-x86_64 openwrt-ipk-x86_64
+          openwrt-ipk-x86_64 --version
+          setup openwrt-sdk-opkg-armsr openwrt-ipk-armsr
+          openwrt-ipk-armsr --version
 
       - name: Package x86_64 (tar.gz + apk + ipk)
         run: |
@@ -328,7 +334,7 @@ jobs:
           tar czf "${OUT}/pslinkb-${V}-${arch}-openwrt.tar.gz" -C /tmp/pkg usr/ etc/
 
           # apk
-          openwrt-apk mkpkg \
+          openwrt-apk-x86_64 mkpkg \
             --info "name:pslinkb" \
             --info "version:${V}-r0" \
             --info "arch:${arch}" \
@@ -361,7 +367,7 @@ jobs:
           cp "$GITHUB_WORKSPACE/openwrt/etc/init.d/pslinkb" /tmp/pkg/etc/init.d/ && chmod +x /tmp/pkg/etc/init.d/pslinkb
           tar czf "${OUT}/pslinkb-${V}-${arch}-openwrt.tar.gz" -C /tmp/pkg usr/ etc/
 
-          openwrt-apk mkpkg \
+          openwrt-apk-x86_64 mkpkg \
             --info "name:pslinkb" \
             --info "version:${V}-r0" \
             --info "arch:${arch}" \
@@ -415,7 +421,7 @@ jobs:
           [ -d "$SRC/htdocs" ] && (mkdir -p /tmp/lp/www && cp -a "$SRC/htdocs/." /tmp/lp/www/ 2>/dev/null) || true
           echo "=== luci-app files ===" && find /tmp/lp -type f | sort
           tar czf "/tmp/out/luci-app-pslinkb-${LVER}.tar.gz" -C /tmp/lp .
-          openwrt-apk mkpkg \
+          openwrt-apk-x86_64 mkpkg \
             --info "name:luci-app-pslinkb" \
             --info "version:${LVER}" \
             --info "arch:noarch" \
