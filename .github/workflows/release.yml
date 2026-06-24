@@ -344,21 +344,21 @@ EOF
           set -e; V="${V#v}"; arch=x86_64
           # IPK
           curl -sL https://downloads.openwrt.org/releases/24.10.4/targets/x86/64/openwrt-24.10.4-x86-64-rootfs.tar.gz -o /tmp/rootfs.tar.gz
-          mkdir -p /tmp/owrt && sudo tar xzf /tmp/rootfs.tar.gz -C /tmp/owrt --exclude='dev/*'
-          sudo mkdir -p /tmp/owrt/tmp /tmp/owrt/dev /tmp/owrt/var/lock
+          mkdir -p /tmp/openwrt-root && sudo tar xzf /tmp/rootfs.tar.gz -C /tmp/openwrt-root --exclude='dev/*'
+          sudo mkdir -p /tmp/openwrt-root/tmp /tmp/openwrt-root/dev /tmp/openwrt-root/var/lock
           IPK=$(ls /tmp/out/pslinkb-${V}-${arch}-openwrt.ipk 2>/dev/null | head -1)
-          sudo cp "$IPK" /tmp/owrt/tmp/test.ipk
-          sudo chroot /tmp/owrt /bin/opkg install /tmp/test.ipk --force-overwrite
-          sudo chroot /tmp/owrt /usr/bin/pslinkb --version && echo "IPK OK (x86_64)"
+          sudo cp "$IPK" /tmp/openwrt-root/tmp/test.ipk
+          sudo chroot /tmp/openwrt-root /bin/opkg install /tmp/test.ipk --force-overwrite
+          sudo chroot /tmp/openwrt-root /usr/bin/pslinkb --version && echo "IPK OK (x86_64)"
           # APK
-          rm -rf /tmp/owrt && mkdir -p /tmp/owrt
+          rm -rf /tmp/openwrt-root && mkdir -p /tmp/openwrt-root
           curl -sL https://downloads.openwrt.org/snapshots/targets/x86/64/openwrt-x86-64-rootfs.tar.gz -o /tmp/rootfs.tar.gz
-          mkdir -p /tmp/owrt && sudo tar xzf /tmp/rootfs.tar.gz -C /tmp/owrt --exclude='dev/*'
-          sudo mkdir -p /tmp/owrt/tmp /tmp/owrt/dev
+          mkdir -p /tmp/openwrt-root && sudo tar xzf /tmp/rootfs.tar.gz -C /tmp/openwrt-root --exclude='dev/*'
+          sudo mkdir -p /tmp/openwrt-root/tmp /tmp/openwrt-root/dev
           APK=$(ls /tmp/out/pslinkb-${V}-${arch}-openwrt.apk 2>/dev/null | head -1)
-          sudo cp "$APK" /tmp/owrt/tmp/test.apk
-          sudo chroot /tmp/owrt /usr/bin/sh -c "apk add --allow-untrusted /tmp/test.apk"
-          sudo chroot /tmp/owrt /usr/bin/pslinkb --version && echo "APK OK (x86_64)"
+          sudo cp "$APK" /tmp/openwrt-root/tmp/test.apk
+          sudo chroot /tmp/openwrt-root /usr/bin/sh -c "apk add --allow-untrusted /tmp/test.apk"
+          sudo chroot /tmp/openwrt-root /usr/bin/pslinkb --version && echo "APK OK (x86_64)"
 
       - name: List output
         run: |
@@ -395,12 +395,12 @@ EOF
         run: |
           set -e
           curl -sL https://downloads.openwrt.org/snapshots/targets/x86/64/openwrt-x86-64-rootfs.tar.gz -o /tmp/rootfs.tar.gz
-          mkdir -p /tmp/owrtl && sudo tar xzf /tmp/rootfs.tar.gz -C /tmp/owrtl --exclude='dev/*'
-          sudo mkdir -p /tmp/owrtl/tmp /tmp/owrtl/dev
+          mkdir -p /tmp/openwrt-rootl && sudo tar xzf /tmp/rootfs.tar.gz -C /tmp/openwrt-rootl --exclude='dev/*'
+          sudo mkdir -p /tmp/openwrt-rootl/tmp /tmp/openwrt-rootl/dev
           APK=$(ls /tmp/out/luci-app-pslinkb-*.apk 2>/dev/null | head -1)
           [ -z "$APK" ] && echo "ERROR: no luci APK found" && exit 1
-          sudo cp "$APK" /tmp/owrtl/tmp/test.apk
-          sudo chroot /tmp/owrtl /usr/bin/sh -c "apk add --allow-untrusted /tmp/test.apk"
+          sudo cp "$APK" /tmp/openwrt-rootl/tmp/test.apk
+          sudo chroot /tmp/openwrt-rootl /usr/bin/sh -c "apk add --allow-untrusted /tmp/test.apk"
           echo "luci APK OK"
 
       - uses: actions/upload-artifact@v4
