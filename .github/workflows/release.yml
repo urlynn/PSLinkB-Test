@@ -61,9 +61,9 @@ jobs:
           zstd -d /tmp/sdk.tar.zst -o /tmp/sdk.tar
           tar -xf /tmp/sdk.tar -C /tmp/sdk/
           SDK_DIR=$(ls -d /tmp/sdk/openwrt-sdk-*)
+          rm -rf /tmp/sdk.tar.zst /tmp/sdk.tar
           export PATH="$SDK_DIR/staging_dir/host/bin:$PATH"
           export LD_LIBRARY_PATH="$SDK_DIR/staging_dir/host/lib:$LD_LIBRARY_PATH"
-          rm -rf /tmp/sdk.tar.zst /tmp/sdk.tar
           file "$SDK_DIR/staging_dir/host/bin/apk"
           apk --version
 
@@ -167,6 +167,7 @@ jobs:
           sudo cp "$IPK" /tmp/owrt/tmp/test.ipk
           sudo chroot /tmp/owrt /bin/opkg install /tmp/test.ipk --force-overwrite
           sudo chroot /tmp/owrt /usr/bin/pslinkb --version
+          if [ -f /tmp/owrt/usr/bin/pslinkb-stream ]; then sudo chroot /tmp/owrt /usr/bin/pslinkb-stream --version; fi
           echo "IPK OK"
 
       - name: Verify APK
@@ -181,6 +182,7 @@ jobs:
           sudo cp "$APK" /tmp/owrt/tmp/test.apk
           sudo chroot /tmp/owrt /usr/bin/sh -c "apk add --allow-untrusted /tmp/test.apk"
           sudo chroot /tmp/owrt /usr/bin/pslinkb --version
+          if [ -f /tmp/owrt/usr/bin/pslinkb-stream ]; then sudo chroot /tmp/owrt /usr/bin/pslinkb-stream --version; fi
           echo "APK OK"
 
       - name: List output
@@ -237,9 +239,9 @@ jobs:
           zstd -d /tmp/sdk.tar.zst -o /tmp/sdk.tar
           tar -xf /tmp/sdk.tar -C /tmp/sdk/
           SDK_DIR=$(ls -d /tmp/sdk/openwrt-sdk-*)
+          rm -rf /tmp/sdk.tar.zst /tmp/sdk.tar
           export PATH="$SDK_DIR/staging_dir/host/bin:$PATH"
           export LD_LIBRARY_PATH="$SDK_DIR/staging_dir/host/lib:$LD_LIBRARY_PATH"
-          rm -rf /tmp/sdk.tar.zst /tmp/sdk.tar
           file "$SDK_DIR/staging_dir/host/bin/apk"
           apk --version
 
@@ -343,6 +345,7 @@ jobs:
           sudo cp "$IPK" /tmp/owrt/tmp/test.ipk
           sudo chroot /tmp/owrt /bin/opkg install /tmp/test.ipk --force-overwrite
           sudo chroot /tmp/owrt /usr/bin/pslinkb --version
+          if [ -f /tmp/owrt/usr/bin/pslinkb-stream ]; then sudo chroot /tmp/owrt /usr/bin/pslinkb-stream --version; fi
           echo "IPK OK"
 
       - name: Verify APK
@@ -357,6 +360,7 @@ jobs:
           sudo cp "$APK" /tmp/owrt/tmp/test.apk
           sudo chroot /tmp/owrt /usr/bin/sh -c "apk add --allow-untrusted /tmp/test.apk"
           sudo chroot /tmp/owrt /usr/bin/pslinkb --version
+          if [ -f /tmp/owrt/usr/bin/pslinkb-stream ]; then sudo chroot /tmp/owrt /usr/bin/pslinkb-stream --version; fi
           echo "APK OK"
 
       - name: List output
@@ -413,7 +417,9 @@ jobs:
           F=$(ls /tmp/out/pslinkb-*-x86_64-windows.zip 2>/dev/null | head -1)
           [ -z "$F" ] && echo "ERROR: no zip" && exit 1
           7z x "-o/tmp/win" "$F" -y
-          /tmp/win/pslinkb.exe --version && echo "Windows OK"
+          /tmp/win/pslinkb.exe --version
+          [ -f /tmp/win/pslinkb-stream.exe ] && /tmp/win/pslinkb-stream.exe --version
+          echo "Windows OK"
 
       - uses: actions/upload-artifact@v4
         with:
@@ -550,9 +556,9 @@ jobs:
           zstd -d /tmp/sdk.tar.zst -o /tmp/sdk.tar
           tar -xf /tmp/sdk.tar -C /tmp/sdk/
           SDK_DIR=$(ls -d /tmp/sdk/openwrt-sdk-*)
+          rm -rf /tmp/sdk.tar.zst /tmp/sdk.tar
           export PATH="$SDK_DIR/staging_dir/host/bin:$PATH"
           export LD_LIBRARY_PATH="$SDK_DIR/staging_dir/host/lib:$LD_LIBRARY_PATH"
-          rm -rf /tmp/sdk.tar.zst /tmp/sdk.tar
           file "$SDK_DIR/staging_dir/host/bin/apk"
           apk --version
 
