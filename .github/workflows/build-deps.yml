@@ -45,7 +45,7 @@ jobs:
             -I/tmp/ffbuild/include -L/tmp/ffbuild/lib \
             -lavformat -lavcodec -lavutil \
             -o /tmp/ffbuild/bin/pslinkb-stream
-      - name: Verify (version + musl)
+      - name: Verify - version + musl
         run: |
           BIN=/tmp/ffbuild/bin/pslinkb-stream
           "$BIN" --version
