@@ -58,6 +58,7 @@ jobs:
           sudo apt-get install -y zstd
           BASE="https://downloads.openwrt.org/snapshots/targets/x86/64"
           SDK_NAME=$(curl -sL "$BASE/" | grep -oP 'openwrt-sdk-x86-64[^"]*musl\.Linux-x86_64\.tar\.zst' | head -1)
+          [ -n "$SDK_NAME" ] || { echo "ERROR: SDK not found at $BASE/"; curl -sL "$BASE/"; exit 1; }
           echo "SDK: $SDK_NAME"
           curl -sL "$BASE/$SDK_NAME" -o /tmp/sdk.tar.zst
           rm -rf /tmp/sdk && mkdir -p /tmp/sdk
@@ -239,6 +240,7 @@ jobs:
           sudo apt-get install -y zstd
           BASE="https://downloads.openwrt.org/snapshots/targets/armsr/armv8"
           SDK_NAME=$(curl -sL "$BASE/" | grep -oP 'openwrt-sdk-armsr-armv8[^"]*musl\.Linux-aarch64\.tar\.zst' | head -1)
+          [ -n "$SDK_NAME" ] || { echo "ERROR: SDK not found at $BASE/"; curl -sL "$BASE/"; exit 1; }
           echo "SDK: $SDK_NAME"
           curl -sL "$BASE/$SDK_NAME" -o /tmp/sdk.tar.zst
           rm -rf /tmp/sdk && mkdir -p /tmp/sdk
@@ -565,6 +567,7 @@ jobs:
           sudo apt-get install -y zstd
           BASE="https://downloads.openwrt.org/snapshots/targets/x86/64"
           SDK_NAME=$(curl -sL "$BASE/" | grep -oP 'openwrt-sdk-x86-64[^"]*musl\.Linux-x86_64\.tar\.zst' | head -1)
+          [ -n "$SDK_NAME" ] || { echo "ERROR: SDK not found at $BASE/"; curl -sL "$BASE/"; exit 1; }
           echo "SDK: $SDK_NAME"
           curl -sL "$BASE/$SDK_NAME" -o /tmp/sdk.tar.zst
           rm -rf /tmp/sdk && mkdir -p /tmp/sdk
