@@ -262,10 +262,15 @@ jobs:
           tar -xf /tmp/sdk.tar -C /tmp/sdk/
           SDK_DIR=$(ls -d /tmp/sdk/openwrt-sdk-*)
           rm -rf /tmp/sdk.tar.zst /tmp/sdk.tar
-          printf '#!/bin/sh\nexport PATH=%s/staging_dir/host/bin:$PATH\nexport LD_LIBRARY_PATH=%s/staging_dir/host/lib\nexec %s/staging_dir/host/bin/apk "\$@"\n' \
-            "$SDK_DIR" "$SDK_DIR" "$SDK_DIR" > /usr/local/bin/owrt-apk
-          chmod +x /usr/local/bin/owrt-apk
-          owrt-apk --version
+          cat > /usr/local/bin/openwrt-apk << EOF
+#!/bin/sh
+LD_PRELOAD=$SDK_DIR/staging_dir/host/lib/runas.so \
+exec $SDK_DIR/staging_dir/host/lib/ld-linux-x86-64.so.2 \
+  --library-path $SDK_DIR/staging_dir/host/lib \
+  $SDK_DIR/staging_dir/host/bin/.apk.bin "\$@"
+EOF
+          chmod +x /usr/local/bin/openwrt-apk
+          openwrt-apk --version
 
       - name: Package x86_64 (tar.gz + apk + ipk)
         run: |
@@ -283,7 +288,7 @@ jobs:
           tar czf "${OUT}/pslinkb-${V}-${arch}-openwrt.tar.gz" -C /tmp/pkg usr/ etc/
 
           # apk
-          owrt-apk mkpkg \
+          openwrt-apk mkpkg \
             --info "name:pslinkb" \
             --info "version:${V}-r0" \
             --info "arch:${arch}" \
@@ -316,7 +321,7 @@ jobs:
           cp "$GITHUB_WORKSPACE/openwrt/etc/init.d/pslinkb" /tmp/pkg/etc/init.d/ && chmod +x /tmp/pkg/etc/init.d/pslinkb
           tar czf "${OUT}/pslinkb-${V}-${arch}-openwrt.tar.gz" -C /tmp/pkg usr/ etc/
 
-          owrt-apk mkpkg \
+          openwrt-apk mkpkg \
             --info "name:pslinkb" \
             --info "version:${V}-r0" \
             --info "arch:${arch}" \
@@ -370,7 +375,7 @@ jobs:
           [ -d "$SRC/htdocs" ] && (mkdir -p /tmp/lp/www && cp -a "$SRC/htdocs/." /tmp/lp/www/ 2>/dev/null) || true
           echo "=== luci-app files ===" && find /tmp/lp -type f | sort
           tar czf "/tmp/out/luci-app-pslinkb-${LVER}.tar.gz" -C /tmp/lp .
-          owrt-apk mkpkg \
+          openwrt-apk mkpkg \
             --info "name:luci-app-pslinkb" \
             --info "version:${LVER}" \
             --info "arch:noarch" \
