@@ -262,9 +262,9 @@ jobs:
           tar -xf /tmp/sdk.tar -C /tmp/sdk/
           SDK_DIR=$(ls -d /tmp/sdk/openwrt-sdk-*)
           rm -rf /tmp/sdk.tar.zst /tmp/sdk.tar
+          sed -i '1s|#!/usr/bin/env sh|#!/bin/sh|' "$SDK_DIR/staging_dir/host/bin/apk"
           export PATH="$SDK_DIR/staging_dir/host/bin:$PATH"
           export LD_LIBRARY_PATH="$SDK_DIR/staging_dir/host/lib:$LD_LIBRARY_PATH"
-          (unset LD_LIBRARY_PATH; file "$SDK_DIR/staging_dir/host/bin/apk")
           apk --version
 
       - name: Package x86_64 (tar.gz + apk + ipk)
