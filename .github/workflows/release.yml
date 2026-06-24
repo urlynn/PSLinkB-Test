@@ -56,7 +56,7 @@ jobs:
       - name: Verify stream
         run: |
           set -e
-          S="/tmp/deps/pslinkb-stream-linux-${ARCH}"
+          S="/tmp/deps/stream/${ARCH}-linux-musl/pslinkb-stream"
           if [ -f "$S" ]; then
             "$S" --version
             echo "stream OK: $ARCH"
@@ -68,7 +68,7 @@ jobs:
         run: |
           set -e; V="${V#v}"; OUT=/tmp/out; mkdir -p "$OUT"
           BUN="/tmp/bins/pslinkb-${ARCH}-bundle"
-          STREAM="/tmp/deps/pslinkb-stream-linux-${ARCH}"; [ -f "$STREAM" ] || STREAM=""
+          STREAM="/tmp/deps/stream/${ARCH}-linux-musl/pslinkb-stream"; [ -f "$STREAM" ] || STREAM=""
           rm -rf /tmp/bun && mkdir -p /tmp/bun
           cp "$BUN" /tmp/bun/pslinkb && chmod +x /tmp/bun/pslinkb
           [ -n "$STREAM" ] && cp "$STREAM" /tmp/bun/pslinkb-stream && chmod +x /tmp/bun/pslinkb-stream
@@ -78,7 +78,7 @@ jobs:
         run: |
           set -e; V="${V#v}"; OUT=/tmp/out; mkdir -p "$OUT"
           BUN="/tmp/bins/pslinkb-${ARCH}-bundle"
-          STREAM="/tmp/deps/pslinkb-stream-linux-${ARCH}"; [ -f "$STREAM" ] || STREAM=""
+          STREAM="/tmp/deps/stream/${ARCH}-linux-musl/pslinkb-stream"; [ -f "$STREAM" ] || STREAM=""
           rm -rf /tmp/deb && mkdir -p /tmp/deb/usr/bin /tmp/deb/DEBIAN
           cp "$BUN" /tmp/deb/usr/bin/pslinkb && chmod +x /tmp/deb/usr/bin/pslinkb
           [ -n "$STREAM" ] && cp "$STREAM" /tmp/deb/usr/bin/pslinkb-stream && chmod +x /tmp/deb/usr/bin/pslinkb-stream
@@ -91,7 +91,7 @@ jobs:
         run: |
           set -e; V="${V#v}"; OUT=/tmp/out; mkdir -p "$OUT"
           BUN="/tmp/bins/pslinkb-${ARCH}-bundle"
-          STREAM="/tmp/deps/pslinkb-stream-linux-${ARCH}"; [ -f "$STREAM" ] || STREAM=""
+          STREAM="/tmp/deps/stream/${ARCH}-linux-musl/pslinkb-stream"; [ -f "$STREAM" ] || STREAM=""
           rm -rf /tmp/arch && mkdir -p /tmp/arch/usr/bin
           cp "$BUN" /tmp/arch/usr/bin/pslinkb && chmod +x /tmp/arch/usr/bin/pslinkb
           [ -n "$STREAM" ] && cp "$STREAM" /tmp/arch/usr/bin/pslinkb-stream && chmod +x /tmp/arch/usr/bin/pslinkb-stream
@@ -150,7 +150,7 @@ jobs:
       - name: Verify stream
         run: |
           set -e
-          S="/tmp/deps/pslinkb-stream-linux-${ARCH}"
+          S="/tmp/deps/stream/${ARCH}-linux-musl/pslinkb-stream"
           if [ -f "$S" ]; then
             "$S" --version
             echo "stream OK: $ARCH"
@@ -162,7 +162,7 @@ jobs:
         run: |
           set -e; V="${V#v}"; OUT=/tmp/out; mkdir -p "$OUT"
           BUN="/tmp/bins/pslinkb-${ARCH}-bundle"
-          STREAM="/tmp/deps/pslinkb-stream-linux-${ARCH}"; [ -f "$STREAM" ] || STREAM=""
+          STREAM="/tmp/deps/stream/${ARCH}-linux-musl/pslinkb-stream"; [ -f "$STREAM" ] || STREAM=""
           rm -rf /tmp/bun && mkdir -p /tmp/bun
           cp "$BUN" /tmp/bun/pslinkb && chmod +x /tmp/bun/pslinkb
           [ -n "$STREAM" ] && cp "$STREAM" /tmp/bun/pslinkb-stream && chmod +x /tmp/bun/pslinkb-stream
@@ -172,7 +172,7 @@ jobs:
         run: |
           set -e; V="${V#v}"; OUT=/tmp/out; mkdir -p "$OUT"
           BUN="/tmp/bins/pslinkb-${ARCH}-bundle"
-          STREAM="/tmp/deps/pslinkb-stream-linux-${ARCH}"; [ -f "$STREAM" ] || STREAM=""
+          STREAM="/tmp/deps/stream/${ARCH}-linux-musl/pslinkb-stream"; [ -f "$STREAM" ] || STREAM=""
           rm -rf /tmp/deb && mkdir -p /tmp/deb/usr/bin /tmp/deb/DEBIAN
           cp "$BUN" /tmp/deb/usr/bin/pslinkb && chmod +x /tmp/deb/usr/bin/pslinkb
           [ -n "$STREAM" ] && cp "$STREAM" /tmp/deb/usr/bin/pslinkb-stream && chmod +x /tmp/deb/usr/bin/pslinkb-stream
@@ -185,7 +185,7 @@ jobs:
         run: |
           set -e; V="${V#v}"; OUT=/tmp/out; mkdir -p "$OUT"
           BUN="/tmp/bins/pslinkb-${ARCH}-bundle"
-          STREAM="/tmp/deps/pslinkb-stream-linux-${ARCH}"; [ -f "$STREAM" ] || STREAM=""
+          STREAM="/tmp/deps/stream/${ARCH}-linux-musl/pslinkb-stream"; [ -f "$STREAM" ] || STREAM=""
           rm -rf /tmp/arch && mkdir -p /tmp/arch/usr/bin
           cp "$BUN" /tmp/arch/usr/bin/pslinkb && chmod +x /tmp/arch/usr/bin/pslinkb
           [ -n "$STREAM" ] && cp "$STREAM" /tmp/arch/usr/bin/pslinkb-stream && chmod +x /tmp/arch/usr/bin/pslinkb-stream
@@ -273,7 +273,7 @@ jobs:
           set -e; V="${V#v}"; OUT=/tmp/out; mkdir -p "$OUT"
           arch=x86_64; ARCH_IPK=x86_64
           OWRT="/tmp/bins/pslinkb-${arch}-openwrt"
-          STREAM="/tmp/deps/pslinkb-stream-linux-${arch}"; [ -f "$STREAM" ] || STREAM=""
+          STREAM="/tmp/deps/stream/${arch}-linux-musl/pslinkb-stream"; [ -f "$STREAM" ] || STREAM=""
 
           # tar.gz
           rm -rf /tmp/pkg && mkdir -p /tmp/pkg/usr/bin /tmp/pkg/etc/config /tmp/pkg/etc/init.d
@@ -308,7 +308,7 @@ jobs:
           set -e; V="${V#v}"; OUT=/tmp/out; mkdir -p "$OUT"
           arch=aarch64; ARCH_IPK=aarch64_generic
           OWRT="/tmp/bins/pslinkb-${arch}-openwrt"
-          STREAM="/tmp/deps/pslinkb-stream-linux-${arch}"; [ -f "$STREAM" ] || STREAM=""
+          STREAM="/tmp/deps/stream/${arch}-linux-musl/pslinkb-stream"; [ -f "$STREAM" ] || STREAM=""
 
           rm -rf /tmp/pkg && mkdir -p /tmp/pkg/usr/bin /tmp/pkg/etc/config /tmp/pkg/etc/init.d
           cp "$OWRT" /tmp/pkg/usr/bin/pslinkb && chmod +x /tmp/pkg/usr/bin/pslinkb
@@ -438,7 +438,7 @@ jobs:
           set -e
           [ -f /tmp/pslinkb-deps-windows-x86_64.tar.gz ] || { echo "WARN: no deps"; exit 0; }
           mkdir -p /tmp/deps && tar --no-xattrs -xzf /tmp/pslinkb-deps-windows-x86_64.tar.gz -C /tmp/deps
-          S="/tmp/deps/pslinkb-stream-windows-x86_64.exe"
+          S="/tmp/deps/stream/x86_64-windows/pslinkb-stream.exe"
           if [ -f "$S" ]; then
             "$S" --version
             echo "stream OK: windows"
@@ -451,7 +451,7 @@ jobs:
         run: |
           set -e; V="${V#v}"; OUT=/tmp/out; rm -rf "$OUT" && mkdir -p "$OUT"
           [ -f /tmp/pslinkb-deps-windows-x86_64.tar.gz ] && mkdir -p /tmp/deps && tar xzf /tmp/pslinkb-deps-windows-x86_64.tar.gz -C /tmp/deps || true
-          STREAM="/tmp/deps/pslinkb-stream-windows-x86_64.exe"; [ -f "$STREAM" ] || STREAM=""
+          STREAM="/tmp/deps/stream/x86_64-windows/pslinkb-stream.exe"; [ -f "$STREAM" ] || STREAM=""
           rm -rf /tmp/win && mkdir -p /tmp/win
           cp /tmp/bins/pslinkb-x86_64-windows.exe /tmp/win/pslinkb.exe
           [ -n "$STREAM" ] && cp "$STREAM" /tmp/win/pslinkb-stream.exe
