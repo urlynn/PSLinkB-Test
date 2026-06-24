@@ -47,8 +47,8 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release download ${{ inputs.deps-tag }} --repo ${{ github.repository }} -p 'pslinkb-build-deps.tar.gz' -D /tmp/ --clobber || true
-          mkdir -p /tmp/deps && [ -f /tmp/pslinkb-build-deps.tar.gz ] && tar xzf /tmp/pslinkb-build-deps.tar.gz -C /tmp/deps || true
+          gh release download ${{ inputs.deps-tag }} --repo ${{ github.repository }} -p 'pslinkb-deps-linux-x86_64.tar.gz' -D /tmp/ --clobber || true
+          mkdir -p /tmp/deps && [ -f /tmp/pslinkb-deps-linux-x86_64.tar.gz ] && tar xzf /tmp/pslinkb-deps-linux-x86_64.tar.gz -C /tmp/deps || true
 
       - name: Install zstd
         run: sudo apt-get install -y zstd
@@ -141,8 +141,8 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release download ${{ inputs.deps-tag }} --repo ${{ github.repository }} -p 'pslinkb-build-deps.tar.gz' -D /tmp/ --clobber || true
-          mkdir -p /tmp/deps && [ -f /tmp/pslinkb-build-deps.tar.gz ] && tar xzf /tmp/pslinkb-build-deps.tar.gz -C /tmp/deps || true
+          gh release download ${{ inputs.deps-tag }} --repo ${{ github.repository }} -p 'pslinkb-deps-linux-aarch64.tar.gz' -D /tmp/ --clobber || true
+          mkdir -p /tmp/deps && [ -f /tmp/pslinkb-deps-linux-aarch64.tar.gz ] && tar xzf /tmp/pslinkb-deps-linux-aarch64.tar.gz -C /tmp/deps || true
 
       - name: Install zstd
         run: sudo apt-get install -y zstd
@@ -242,8 +242,13 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release download ${{ inputs.deps-tag }} --repo ${{ github.repository }} -p 'pslinkb-build-deps.tar.gz' -D /tmp/ --clobber || true
-          mkdir -p /tmp/deps && [ -f /tmp/pslinkb-build-deps.tar.gz ] && tar xzf /tmp/pslinkb-build-deps.tar.gz -C /tmp/deps || true
+          for f in pslinkb-deps-linux-x86_64.tar.gz pslinkb-deps-linux-aarch64.tar.gz; do
+            gh release download ${{ inputs.deps-tag }} --repo ${{ github.repository }} -p "$f" -D /tmp/ --clobber || true
+          done
+          mkdir -p /tmp/deps
+          for f in /tmp/pslinkb-deps-linux-*.tar.gz; do
+            [ -f "$f" ] && tar xzf "$f" -C /tmp/deps || true
+          done
 
       - name: Install zstd + SDK
         run: |
@@ -425,14 +430,14 @@ jobs:
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release download ${{ inputs.deps-tag }} --repo ${{ github.repository }} -p 'pslinkb-build-deps.tar.gz' -D /tmp/ --clobber || true
+        run: gh release download ${{ inputs.deps-tag }} --repo ${{ github.repository }} -p 'pslinkb-deps-windows-x86_64.tar.gz' -D /tmp/ --clobber || true
 
       - name: Verify stream
         shell: bash
         run: |
           set -e
-          [ -f /tmp/pslinkb-build-deps.tar.gz ] || { echo "WARN: no deps"; exit 0; }
-          mkdir -p /tmp/deps && tar --no-xattrs -xzf /tmp/pslinkb-build-deps.tar.gz -C /tmp/deps
+          [ -f /tmp/pslinkb-deps-windows-x86_64.tar.gz ] || { echo "WARN: no deps"; exit 0; }
+          mkdir -p /tmp/deps && tar --no-xattrs -xzf /tmp/pslinkb-deps-windows-x86_64.tar.gz -C /tmp/deps
           S="/tmp/deps/stream/x86_64-windows/pslinkb-stream.exe"
           if [ -f "$S" ]; then
             "$S" --version
@@ -445,7 +450,7 @@ jobs:
         shell: bash
         run: |
           set -e; V="${V#v}"; OUT=/tmp/out; rm -rf "$OUT" && mkdir -p "$OUT"
-          [ -f /tmp/pslinkb-build-deps.tar.gz ] && mkdir -p /tmp/deps && tar xzf /tmp/pslinkb-build-deps.tar.gz -C /tmp/deps || true
+          [ -f /tmp/pslinkb-deps-windows-x86_64.tar.gz ] && mkdir -p /tmp/deps && tar xzf /tmp/pslinkb-deps-windows-x86_64.tar.gz -C /tmp/deps || true
           STREAM="/tmp/deps/stream/x86_64-windows/pslinkb-stream.exe"; [ -f "$STREAM" ] || STREAM=""
           rm -rf /tmp/win && mkdir -p /tmp/win
           cp /tmp/bins/pslinkb-x86_64-windows.exe /tmp/win/pslinkb.exe

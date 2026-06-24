@@ -10,7 +10,7 @@ on:
         options: [all, linux-x86_64, linux-aarch64, windows-x86_64, macos-aarch64, macos-x86_64]
         default: 'all'
       deps-tag:
-        description: 'Release tag with pslinkb-build-deps.tar.gz'
+        description: 'Release tag with pslinkb-deps-*.tar.gz'
         type: string
         required: false
         default: 'build-deps'
@@ -96,9 +96,9 @@ jobs:
         run: |
           set -e
           gh release download ${{ inputs.deps-tag }} --repo ${{ github.repository }} \
-            -p 'pslinkb-build-deps.tar.gz' -D /tmp/ --clobber
+            -p 'pslinkb-deps-macos-aarch64.tar.gz' -D /tmp/ --clobber
           mkdir -p /tmp/deps
-          tar xzf /tmp/pslinkb-build-deps.tar.gz -C /tmp/deps/
+          tar xzf /tmp/pslinkb-deps-macos-aarch64.tar.gz -C /tmp/deps/
           if [ -d /tmp/deps/ffbuild/aarch64-macos ]; then
             rm -rf ffbuild/macos-aarch64 && mkdir -p ffbuild/macos-aarch64
             cp -a /tmp/deps/ffbuild/aarch64-macos/. ffbuild/macos-aarch64/
@@ -131,9 +131,9 @@ jobs:
         run: |
           set -e
           gh release download ${{ inputs.deps-tag }} --repo ${{ github.repository }} \
-            -p 'pslinkb-build-deps.tar.gz' -D /tmp/ --clobber
+            -p 'pslinkb-deps-macos-x86_64.tar.gz' -D /tmp/ --clobber
           mkdir -p /tmp/deps
-          tar xzf /tmp/pslinkb-build-deps.tar.gz -C /tmp/deps/
+          tar xzf /tmp/pslinkb-deps-macos-x86_64.tar.gz -C /tmp/deps/
           if [ -d /tmp/deps/ffbuild/x86_64-macos ]; then
             rm -rf ffbuild/macos-x86_64 && mkdir -p ffbuild/macos-x86_64
             cp -a /tmp/deps/ffbuild/x86_64-macos/. ffbuild/macos-x86_64/
