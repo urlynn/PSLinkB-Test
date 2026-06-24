@@ -421,46 +421,113 @@ jobs:
           path: /tmp/out/
           retention-days: 30
 
-  package-macos:
-    runs-on: ubuntu-latest
+  package-macos-aarch64:
+    runs-on: macos-26
     timeout-minutes: 5
     env:
       V: ${{ inputs.version }}
+      ARCH: aarch64
     steps:
-      - name: Download macOS artifacts
+      - name: Download macos-aarch64 artifact
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           mkdir -p /tmp/bins
-          for arch in aarch64 x86_64; do
-            for rid in $(gh run list --repo ${{ github.repository }} --workflow build.yml --limit 20 --status success --json databaseId -q '.[].databaseId'); do
-              if gh run view $rid --repo ${{ github.repository }} --json jobs -q "[.jobs[] | select(.name == \"build-macos-${arch}\" and .conclusion == \"success\")] | length" | grep -qx '[1-9]'; then
-                gh run download $rid --repo ${{ github.repository }} --name "macos-${arch}" --dir /tmp/bins
-                echo "macos-${arch} from $rid"
-                break
-              fi
-            done
+          for rid in $(gh run list --repo ${{ github.repository }} --workflow build.yml --limit 20 --status success --json databaseId -q '.[].databaseId'); do
+            if gh run view $rid --repo ${{ github.repository }} --json jobs -q '[.jobs[] | select(.name == "build-macos-aarch64" and .conclusion == "success")] | length' | grep -qx '[1-9]'; then
+              gh run download $rid --repo ${{ github.repository }} --name macos-aarch64 --dir /tmp/bins
+              echo "macos-aarch64 from $rid" && exit 0
+            fi
           done
+          echo "ERROR" && exit 1
 
       - name: Package
         run: |
           set -e; V="${V#v}"; OUT=/tmp/out; rm -rf "$OUT" && mkdir -p "$OUT"
-          for arch in aarch64 x86_64; do
-            BIN="/tmp/bins/pslinkb-${arch}-macos"
-            if [ -f "$BIN" ]; then
-              cp "$BIN" "${OUT}/pslinkb-${V}-${arch}-macos.command" && chmod +x "${OUT}/pslinkb-${V}-${arch}-macos.command"
-              rm -rf /tmp/macos && mkdir -p /tmp/macos
-              cp "$BIN" /tmp/macos/pslinkb && chmod +x /tmp/macos/pslinkb
-              tar czf "${OUT}/pslinkb-${V}-${arch}-macos.tar.gz" -C /tmp/macos pslinkb && rm -rf /tmp/macos
-              echo "macOS ${arch}: OK"
-            else
-              echo "WARN: macOS ${arch} not found"
-            fi
-          done
+          BIN="/tmp/bins/pslinkb-${ARCH}-macos"
+          [ -f "$BIN" ] || { echo "ERROR: binary not found" && exit 1; }
+          cp "$BIN" "${OUT}/pslinkb-${V}-${ARCH}-macos.command" && chmod +x "${OUT}/pslinkb-${V}-${ARCH}-macos.command"
+          mkdir -p /tmp/macos && cp "$BIN" /tmp/macos/pslinkb && chmod +x /tmp/macos/pslinkb
+          tar czf "${OUT}/pslinkb-${V}-${ARCH}-macos.tar.gz" -C /tmp/macos pslinkb && rm -rf /tmp/macos
+
+      - name: Verify .command
+        run: |
+          set -e; V="${V#v}"
+          F="/tmp/out/pslinkb-${V}-${ARCH}-macos.command"
+          [ -f "$F" ] && [ -x "$F" ] && [ -s "$F" ] || { echo "ERROR: .command invalid" && exit 1; }
+          "$F" --version
+          echo "macOS ${ARCH} .command OK"
+
+      - name: Verify .tar.gz
+        run: |
+          set -e; V="${V#v}"
+          F="/tmp/out/pslinkb-${V}-${ARCH}-macos.tar.gz"
+          [ -f "$F" ] && [ -s "$F" ] || { echo "ERROR: .tar.gz invalid" && exit 1; }
+          rm -rf /tmp/tarcheck && mkdir -p /tmp/tarcheck
+          tar xzf "$F" -C /tmp/tarcheck
+          [ -x /tmp/tarcheck/pslinkb ] || { echo "ERROR: binary not executable in tar.gz" && exit 1; }
+          /tmp/tarcheck/pslinkb --version
+          rm -rf /tmp/tarcheck
+          echo "macOS ${ARCH} .tar.gz OK"
 
       - uses: actions/upload-artifact@v4
         with:
-          name: pkgs-macos
+          name: pkgs-macos-aarch64
+          path: /tmp/out/
+          retention-days: 30
+
+  package-macos-x86_64:
+    runs-on: macos-26-intel
+    timeout-minutes: 5
+    env:
+      V: ${{ inputs.version }}
+      ARCH: x86_64
+    steps:
+      - name: Download macos-x86_64 artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p /tmp/bins
+          for rid in $(gh run list --repo ${{ github.repository }} --workflow build.yml --limit 20 --status success --json databaseId -q '.[].databaseId'); do
+            if gh run view $rid --repo ${{ github.repository }} --json jobs -q '[.jobs[] | select(.name == "build-macos-x86_64" and .conclusion == "success")] | length' | grep -qx '[1-9]'; then
+              gh run download $rid --repo ${{ github.repository }} --name macos-x86_64 --dir /tmp/bins
+              echo "macos-x86_64 from $rid" && exit 0
+            fi
+          done
+          echo "ERROR" && exit 1
+
+      - name: Package
+        run: |
+          set -e; V="${V#v}"; OUT=/tmp/out; rm -rf "$OUT" && mkdir -p "$OUT"
+          BIN="/tmp/bins/pslinkb-${ARCH}-macos"
+          [ -f "$BIN" ] || { echo "ERROR: binary not found" && exit 1; }
+          cp "$BIN" "${OUT}/pslinkb-${V}-${ARCH}-macos.command" && chmod +x "${OUT}/pslinkb-${V}-${ARCH}-macos.command"
+          mkdir -p /tmp/macos && cp "$BIN" /tmp/macos/pslinkb && chmod +x /tmp/macos/pslinkb
+          tar czf "${OUT}/pslinkb-${V}-${ARCH}-macos.tar.gz" -C /tmp/macos pslinkb && rm -rf /tmp/macos
+
+      - name: Verify .command
+        run: |
+          set -e; V="${V#v}"
+          F="/tmp/out/pslinkb-${V}-${ARCH}-macos.command"
+          [ -f "$F" ] && [ -x "$F" ] && [ -s "$F" ] || { echo "ERROR: .command invalid" && exit 1; }
+          "$F" --version
+          echo "macOS ${ARCH} .command OK"
+
+      - name: Verify .tar.gz
+        run: |
+          set -e; V="${V#v}"
+          F="/tmp/out/pslinkb-${V}-${ARCH}-macos.tar.gz"
+          [ -f "$F" ] && [ -s "$F" ] || { echo "ERROR: .tar.gz invalid" && exit 1; }
+          rm -rf /tmp/tarcheck && mkdir -p /tmp/tarcheck
+          tar xzf "$F" -C /tmp/tarcheck
+          [ -x /tmp/tarcheck/pslinkb ] || { echo "ERROR: binary not executable in tar.gz" && exit 1; }
+          /tmp/tarcheck/pslinkb --version
+          rm -rf /tmp/tarcheck
+          echo "macOS ${ARCH} .tar.gz OK"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pkgs-macos-x86_64
           path: /tmp/out/
           retention-days: 30
 
@@ -539,7 +606,7 @@ jobs:
           retention-days: 30
 
   release:
-    needs: [package-x86_64, package-aarch64, package-windows, package-macos, package-luci]
+    needs: [package-x86_64, package-aarch64, package-windows, package-macos-aarch64, package-macos-x86_64, package-luci]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
