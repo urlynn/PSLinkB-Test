@@ -13,6 +13,9 @@ on:
 env:
   ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: 'true'
 
+permissions:
+  contents: write
+
 jobs:
   linux-x86_64:
     if: ${{ inputs.platform == 'all' || inputs.platform == 'linux-x86_64' }}
@@ -56,10 +59,15 @@ jobs:
           file "$BIN" | grep -q 'statically linked' || { echo "ERROR: not static"; exit 1; }
           strings "$BIN" | grep -c GLIBC | grep -qx 0 || { echo "ERROR: linked against glibc"; exit 1; }
           echo "linux-x86_64 OK"
-      - uses: actions/upload-artifact@v4
-        with:
-          name: linux-x86_64
-          path: /tmp/ffbuild/bin/pslinkb-stream
+      - name: Upload binary
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp /tmp/ffbuild/bin/pslinkb-stream /tmp/pslinkb-stream-linux-x86_64
+          TAG="build-deps"
+          gh release view "$TAG" --repo ${{ github.repository }} 2>/dev/null || \
+            gh release create "$TAG" --repo ${{ github.repository }} --title "Build Dependencies" --notes "pslinkb-stream + FFmpeg static libs — CI built"
+          gh release upload "$TAG" /tmp/pslinkb-stream-linux-x86_64 --repo ${{ github.repository }} --clobber
 
   linux-aarch64:
     if: ${{ inputs.platform == 'all' || inputs.platform == 'linux-aarch64' }}
@@ -108,10 +116,15 @@ jobs:
           file "$BIN" | grep -q 'statically linked' || { echo "ERROR: not static"; exit 1; }
           strings "$BIN" | grep -c GLIBC | grep -qx 0 || { echo "ERROR: linked against glibc"; exit 1; }
           echo "linux-aarch64 OK"
-      - uses: actions/upload-artifact@v4
-        with:
-          name: linux-aarch64
-          path: /tmp/ffbuild/bin/pslinkb-stream
+      - name: Upload binary
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp /tmp/ffbuild/bin/pslinkb-stream /tmp/pslinkb-stream-linux-aarch64
+          TAG="build-deps"
+          gh release view "$TAG" --repo ${{ github.repository }} 2>/dev/null || \
+            gh release create "$TAG" --repo ${{ github.repository }} --title "Build Dependencies" --notes "pslinkb-stream + FFmpeg static libs — CI built"
+          gh release upload "$TAG" /tmp/pslinkb-stream-linux-aarch64 --repo ${{ github.repository }} --clobber
 
   macos-aarch64:
     if: ${{ inputs.platform == 'all' || inputs.platform == 'macos-aarch64' }}
@@ -139,12 +152,15 @@ jobs:
             --disable-filters --disable-swscale --disable-bsfs --disable-doc --disable-debug --disable-ffplay --disable-ffprobe \
             --disable-iconv --disable-lzma --disable-bzlib --disable-zlib --disable-runtime-cpudetect
           make -j$(sysctl -n hw.ncpu) && make install
-      - uses: actions/upload-artifact@v4
-        with:
-          name: macos-aarch64
-          path: |
-            /tmp/ffbuild/lib/
-            /tmp/ffbuild/include/
+      - name: Upload FFmpeg libs
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tar czf /tmp/ffbuild-macos-aarch64.tar.gz -C /tmp/ffbuild lib/ include/
+          TAG="build-deps"
+          gh release view "$TAG" --repo ${{ github.repository }} 2>/dev/null || \
+            gh release create "$TAG" --repo ${{ github.repository }} --title "Build Dependencies" --notes "pslinkb-stream + FFmpeg static libs — CI built"
+          gh release upload "$TAG" /tmp/ffbuild-macos-aarch64.tar.gz --repo ${{ github.repository }} --clobber
 
   macos-x86_64:
     if: ${{ inputs.platform == 'all' || inputs.platform == 'macos-x86_64' }}
@@ -172,12 +188,15 @@ jobs:
             --disable-filters --disable-swscale --disable-bsfs --disable-doc --disable-debug --disable-ffplay --disable-ffprobe \
             --disable-iconv --disable-lzma --disable-bzlib --disable-zlib --disable-runtime-cpudetect
           make -j$(sysctl -n hw.ncpu) && make install
-      - uses: actions/upload-artifact@v4
-        with:
-          name: macos-x86_64
-          path: |
-            /tmp/ffbuild/lib/
-            /tmp/ffbuild/include/
+      - name: Upload FFmpeg libs
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tar czf /tmp/ffbuild-macos-x86_64.tar.gz -C /tmp/ffbuild lib/ include/
+          TAG="build-deps"
+          gh release view "$TAG" --repo ${{ github.repository }} 2>/dev/null || \
+            gh release create "$TAG" --repo ${{ github.repository }} --title "Build Dependencies" --notes "pslinkb-stream + FFmpeg static libs — CI built"
+          gh release upload "$TAG" /tmp/ffbuild-macos-x86_64.tar.gz --repo ${{ github.repository }} --clobber
 
   windows-x86_64:
     if: ${{ inputs.platform == 'all' || inputs.platform == 'windows-x86_64' }}
@@ -238,10 +257,16 @@ jobs:
           cp "$SRC" /tmp/ffbuild/bin/pslinkb-stream.exe
           /tmp/ffbuild/bin/pslinkb-stream.exe --version
           echo "windows-x86_64 OK"
-      - uses: actions/upload-artifact@v4
-        with:
-          name: windows-x86_64
-          path: /tmp/ffbuild/bin/pslinkb-stream.exe
+      - name: Upload binary
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp /tmp/ffbuild/bin/pslinkb-stream.exe /tmp/pslinkb-stream-windows-x86_64.exe
+          TAG="build-deps"
+          gh release view "$TAG" --repo ${{ github.repository }} 2>/dev/null || \
+            gh release create "$TAG" --repo ${{ github.repository }} --title "Build Dependencies" --notes "pslinkb-stream + FFmpeg static libs — CI built"
+          gh release upload "$TAG" /tmp/pslinkb-stream-windows-x86_64.exe --repo ${{ github.repository }} --clobber
 
   windows-aarch64:
     if: ${{ inputs.platform == 'all' || inputs.platform == 'windows-aarch64' }}
@@ -280,58 +305,12 @@ jobs:
         run: |
           /tmp/ffbuild/bin/pslinkb-stream.exe --version
           echo "windows-aarch64 OK"
-      - uses: actions/upload-artifact@v4
-        with:
-          name: windows-aarch64
-          path: /tmp/ffbuild/bin/pslinkb-stream.exe
-
-  release-deps:
-    needs: [linux-x86_64, linux-aarch64, macos-aarch64, macos-x86_64, windows-x86_64, windows-aarch64]
-    if: ${{ inputs.platform == 'all' && !failure() && !cancelled() }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    permissions:
-      contents: write
-    env:
-      ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: 'true'
-    steps:
-      - uses: actions/download-artifact@v4
-        with:
-          pattern: '*'
-          path: /tmp/deps
-      - name: Package + release
+      - name: Upload binary
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          set -e
-          OUT=/tmp/out; rm -rf "$OUT" && mkdir -p "$OUT"
-          for arch in x86_64 aarch64; do
-            SRC="/tmp/deps/linux-${arch}/pslinkb-stream"
-            if [ -f "$SRC" ]; then
-              mkdir -p "$OUT/stream/${arch}-linux-musl"
-              cp "$SRC" "$OUT/stream/${arch}-linux-musl/pslinkb-stream"
-              echo "  linux-${arch} ✓"
-            fi
-          done
-          for arch in aarch64 x86_64; do
-            if [ -d "/tmp/deps/macos-${arch}/lib" ]; then
-              mkdir -p "$OUT/ffbuild/${arch}-macos"
-              cp -r "/tmp/deps/macos-${arch}/lib" "$OUT/ffbuild/${arch}-macos/"
-              cp -r "/tmp/deps/macos-${arch}/include" "$OUT/ffbuild/${arch}-macos/"
-              echo "  macos-${arch} ffbuild ✓"
-            fi
-          done
-          for arch in x86_64 aarch64; do
-            SRC="/tmp/deps/windows-${arch}/pslinkb-stream.exe"
-            if [ -f "$SRC" ]; then
-              mkdir -p "$OUT/stream/${arch}-windows"
-              cp "$SRC" "$OUT/stream/${arch}-windows/pslinkb-stream.exe"
-              echo "  windows-${arch} ✓"
-            fi
-          done
-          PKG="/tmp/pslinkb-build-deps.tar.gz"
-          tar czf "$PKG" -C "$OUT" stream/ ffbuild/
-          ls -lh "$PKG"
+          cp /tmp/ffbuild/bin/pslinkb-stream.exe /tmp/pslinkb-stream-windows-aarch64.exe
           TAG="build-deps"
-          gh release delete "$TAG" --repo ${{ github.repository }} -y 2>&1 || true
-          gh release create "$TAG" "$PKG" --repo ${{ github.repository }} --title "Build Dependencies" --notes "pslinkb-stream + FFmpeg static libs — CI built"
+          gh release view "$TAG" --repo ${{ github.repository }} 2>/dev/null || \
+            gh release create "$TAG" --repo ${{ github.repository }} --title "Build Dependencies" --notes "pslinkb-stream + FFmpeg static libs — CI built"
+          gh release upload "$TAG" /tmp/pslinkb-stream-windows-aarch64.exe --repo ${{ github.repository }} --clobber
