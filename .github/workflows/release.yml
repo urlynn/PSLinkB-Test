@@ -325,19 +325,30 @@ jobs:
                   'https://downloads.openwrt.org/releases/24.10.7/targets/armsr/armv8/sha256sums' opkg_armsr
 
       - uses: actions/cache@v4
-        id: cache
+        id: cache-apk-x86
         with:
           path: /tmp/sdk-cache
-          key: openwrt-sdk-${{ steps.sdk.outputs.apk_x86_hash }}-${{ steps.sdk.outputs.apk_armsr_hash }}-${{ steps.sdk.outputs.opkg_x86_hash }}-${{ steps.sdk.outputs.opkg_armsr_hash }}
+          key: sdk-apk-x86-${{ steps.sdk.outputs.apk_x86_hash }}
+      - uses: actions/cache@v4
+        id: cache-apk-armsr
+        with:
+          path: /tmp/sdk-cache
+          key: sdk-apk-armsr-${{ steps.sdk.outputs.apk_armsr_hash }}
+      - uses: actions/cache@v4
+        id: cache-opkg-x86
+        with:
+          path: /tmp/sdk-cache
+          key: sdk-opkg-x86-${{ steps.sdk.outputs.opkg_x86_hash }}
+      - uses: actions/cache@v4
+        id: cache-opkg-armsr
+        with:
+          path: /tmp/sdk-cache
+          key: sdk-opkg-armsr-${{ steps.sdk.outputs.opkg_armsr_hash }}
 
       - name: Download SDKs
-        if: steps.cache.outputs.cache-hit != 'true'
         run: |
           mkdir -p /tmp/sdk-cache
-          download() {
-            curl -L --retry 3 -o "/tmp/sdk-cache/$4.tar.zst" "$1/$2"
-            echo "$3  /tmp/sdk-cache/$4.tar.zst" | sha256sum -c
-          }
+          download() { [ -f "/tmp/sdk-cache/$4.tar.zst" ] && return; curl -L --retry 3 -o "/tmp/sdk-cache/$4.tar.zst" "$1/$2"; echo "$3  /tmp/sdk-cache/$4.tar.zst" | sha256sum -c; }
           download 'https://downloads.openwrt.org/snapshots/targets/x86/64' \
                    '${{ steps.sdk.outputs.apk_x86_file }}' '${{ steps.sdk.outputs.apk_x86_hash }}' sdk-apk-x86_64
           download 'https://downloads.openwrt.org/snapshots/targets/armsr/armv8/' \
