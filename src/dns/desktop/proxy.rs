@@ -4,6 +4,8 @@ use std::collections::HashSet;
 use std::net::{Ipv4Addr, SocketAddr};
 use tokio::net::UdpSocket;
 
+use crate::dlog;
+
 use hickory_proto::op::{Message, MessageType, OpCode, ResponseCode};
 use hickory_proto::rr::{RData, Record, RecordType};
 use hickory_proto::rr::rdata::A;
@@ -48,14 +50,50 @@ fn detect_upstream() -> SocketAddr {
     SocketAddr::new(std::net::IpAddr::V4(Ipv4Addr::new(114, 114, 114, 114)), 53)
 }
 
+fn detect_gateway() -> Option<Ipv4Addr> {
+    #[cfg(target_os = "windows")]
+    {
+        use std::process::Command;
+        if let Ok(out) = Command::new("powershell")
+            .args(["-Command", "(Get-NetRoute -DestinationPrefix '0.0.0.0/0' | Select-Object -First 1).NextHop"])
+            .output()
+        {
+            if out.status.success() {
+                let addr = String::from_utf8_lossy(&out.stdout).trim().to_string();
+                if let Ok(ip) = addr.parse::<Ipv4Addr>() {
+                    return Some(ip);
+                }
+            }
+        }
+    }
+    #[cfg(unix)]
+    {
+        if let Ok(content) = std::fs::read_to_string("/proc/net/route") {
+            for line in content.lines().skip(1) {
+                let parts: Vec<&str> = line.split_whitespace().collect();
+                if parts.len() >= 3 && parts[1] == "00000000" {
+                    let gw = u32::from_str_radix(parts[2], 16).ok()?;
+                    return Some(Ipv4Addr::from(gw.swap_bytes()));
+                }
+            }
+        }
+    }
+    None
+}
+
 impl DnsProxy {
     pub async fn new(
         domains: &[&str],
         target_ip: Ipv4Addr,
+        upstream: Option<SocketAddr>,
     ) -> Result<Self, std::io::Error> {
         let socket = UdpSocket::bind("0.0.0.0:53").await?;
         let redirect_domains: HashSet<String> = domains.iter().map(|d| d.to_string()).collect();
-        let upstream = detect_upstream();
+        let upstream = upstream.unwrap_or_else(detect_upstream);
+        dlog!("[DNS] 上游 DNS 服务器: {}", upstream);
+        if let Some(gw) = detect_gateway() {
+            dlog!("[DNS] 网关: {}", gw);
+        }
         Ok(Self { socket, redirect_domains, target_ip, upstream })
     }
 
@@ -75,11 +113,13 @@ impl DnsProxy {
             };
             let name = query.name().to_utf8();
             let name = name.trim_end_matches('.');
+            let qtype = query.query_type();
 
             let should_redirect = self.redirect_domains.iter()
                 .any(|d| name == d || name.ends_with(&format!(".{}", d)));
 
-            if should_redirect && query.query_type() == RecordType::A {
+            if should_redirect && qtype == RecordType::A {
+                dlog!("[DNS] {} -> {} ({:?}) HIJACK -> {}", src.ip(), name, qtype, self.target_ip);
                 let mut response = Message::new(request.id, MessageType::Response, OpCode::Query);
                 response.queries.push(query.clone());
                 response.metadata.authoritative = true;
@@ -92,6 +132,7 @@ impl DnsProxy {
                     let _ = self.socket.send_to(&resp_bytes, src).await;
                 }
             } else {
+                dlog!("[DNS] {} -> {} ({:?}) FORWARD -> {}", src.ip(), name, qtype, self.upstream);
                 let upstream_sock = match std::net::UdpSocket::bind("0.0.0.0:0") {
                     Ok(s) => {
                         s.set_read_timeout(Some(std::time::Duration::from_secs(3))).ok();

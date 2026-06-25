@@ -26,17 +26,33 @@ macro_rules! log {
     }};
 }
 
-/// 调试日志: debug 构建(cargo run/build)自动输出; --release 自动编译成空(零开销)
-/// release 下需排查可加 `--features debug-log` 强制开启。用法同 println!
+/// 调试日志: debug 构建(cargo run/build)自动输出; release 构建下:
+/// - `--features debug-log` 编译期强制开启
+/// - `--debug` 参数运行时开启
+/// 用法同 println!
 #[macro_export]
 macro_rules! dlog {
     ($($arg:tt)*) => {{
-        #[cfg(any(debug_assertions, feature = "debug-log"))]
-        $crate::log::_dbg(&format!($($arg)*));
+        if cfg!(any(debug_assertions, feature = "debug-log")) || $crate::log::is_debug_enabled() {
+            $crate::log::_dbg(&format!($($arg)*));
+        }
     }};
 }
 
 use owo_colors::{OwoColorize, Stream, Style};
+use std::sync::atomic::{AtomicBool, Ordering};
+
+static DEBUG_ENABLED: AtomicBool = AtomicBool::new(false);
+
+/// 运行时开启调试日志 (--debug 参数调用)
+pub fn set_debug_enabled(enabled: bool) {
+    DEBUG_ENABLED.store(enabled, Ordering::Relaxed);
+}
+
+/// 检查调试日志是否被运行时开启
+pub fn is_debug_enabled() -> bool {
+    DEBUG_ENABLED.load(Ordering::Relaxed)
+}
 
 #[doc(hidden)]
 pub fn _info(msg: &str) {
@@ -68,7 +84,6 @@ pub fn _alert(msg: &str) {
     eprintln!("{}", msg.if_supports_color(Stream::Stderr, |s| s.style(style)));
 }
 
-#[cfg(any(debug_assertions, feature = "debug-log"))]
 #[doc(hidden)]
 pub fn _dbg(msg: &str) {
     eprintln!("{}", msg);

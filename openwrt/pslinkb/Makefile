@@ -1,7 +1,7 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=pslinkb
-PKG_VERSION:=0.2.5
+PKG_VERSION:=0.3.3
 PKG_RELEASE:=1
 
 PKG_LICENSE:=MIT OR Apache-2.0

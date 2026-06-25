@@ -10,6 +10,7 @@ use pslinkb::system::{System, FfmpegCmd, BilibiliCmd, DanmakuCmd};
 use pslinkb::core::error::AppError;
 use pslinkb::run::{Channels, run_loop};
 use pslinkb::{luci, spawn};
+use pslinkb::dlog;
 #[cfg(feature = "cli")]
 use pslinkb::log;
 #[cfg(feature = "cli")]
@@ -31,6 +32,19 @@ async fn main() -> Result<(), AppError> {
         std::process::exit(0);
     }
 
+    // ── 解析 CLI 参数 ──
+    #[cfg(feature = "cli")]
+    let args = {
+        use clap::Parser;
+        pslinkb::cli::Args::parse()
+    };
+
+    // ── 运行时调试日志开关 ──
+    #[cfg(feature = "cli")]
+    if args.debug {
+        pslinkb::log::set_debug_enabled(true);
+    }
+
     // Ring crypto provider
     rustls::crypto::ring::default_provider().install_default()
         .expect("TLS provider init failed");
@@ -41,7 +55,7 @@ async fn main() -> Result<(), AppError> {
 
     // ── 加载配置 ──
     #[cfg(feature = "cli")]
-    let (config, config_path, cli_cookie) = load_config()?;
+    let (config, config_path, cli_cookie) = load_config(&args)?;
     #[cfg(feature = "openwrt")]
     let (config, config_path) = load_config()?;
 
@@ -74,7 +88,18 @@ async fn main() -> Result<(), AppError> {
     let local_ip = pslinkb::utils::ip::local_ip();
 
     #[cfg(feature = "dns-redirect")]
-    pslinkb::dns::auto_start(config.dns_proxy, &local_ip).await;
+    {
+        let dns_override = parse_dns_override(
+            #[cfg(feature = "cli")]
+            args.dns.as_deref(),
+        );
+        pslinkb::dns::auto_start(config.dns_proxy, &local_ip, dns_override).await;
+
+        #[cfg(feature = "cli")]
+        if let Some(ref gw) = args.gateway {
+            dlog!("[DNS] 自定义网关: {}", gw);
+        }
+    }
 
     #[cfg(feature = "openwrt")]
     {
@@ -147,12 +172,10 @@ async fn main() -> Result<(), AppError> {
 // ————————————————————————————————————————————————————————————
 
 #[cfg(feature = "cli")]
-fn load_config() -> Result<(Config, std::path::PathBuf, Option<String>), AppError> {
-    use clap::Parser;
+fn load_config(args: &pslinkb::cli::Args) -> Result<(Config, std::path::PathBuf, Option<String>), AppError> {
     use std::path::PathBuf;
 
-    let args = pslinkb::cli::Args::parse();
-    let config_path = args.config
+    let config_path = args.config.clone()
         .map(PathBuf::from)
         .unwrap_or_else(pslinkb::cli::default_config_path);
 
@@ -173,12 +196,12 @@ fn load_config() -> Result<(Config, std::path::PathBuf, Option<String>), AppErro
     let mut config = config;
     config.apply_cli_overrides(
         args.room_id,
-        args.title,
-        args.area,
-        args.mode.and_then(|s| s.parse().ok()),
+        args.title.clone(),
+        args.area.clone(),
+        args.mode.as_ref().and_then(|s| s.parse().ok()),
     );
 
-    Ok((config, config_path, args.cookie))
+    Ok((config, config_path, args.cookie.clone()))
 }
 
 #[cfg(feature = "openwrt")]
@@ -187,4 +210,22 @@ fn load_config() -> Result<(Config, std::path::PathBuf), AppError> {
     let config = Config::from_uci()?;
     let path = std::path::PathBuf::from("/etc/pslinkb.toml");
     Ok((config, path))
+}
+
+// ────────────────────────────────────────────────────────────
+// DNS override 解析
+// ────────────────────────────────────────────────────────────
+
+#[cfg(feature = "dns-redirect")]
+fn parse_dns_override(dns: Option<&str>) -> Option<std::net::SocketAddr> {
+    use std::net::{Ipv4Addr, SocketAddr, IpAddr};
+    let input = dns?;
+    if let Some((ip_part, port_part)) = input.split_once(':') {
+        let ip: Ipv4Addr = ip_part.parse().ok()?;
+        let port: u16 = port_part.parse().ok()?;
+        Some(SocketAddr::new(IpAddr::V4(ip), port))
+    } else {
+        let ip: Ipv4Addr = input.parse().ok()?;
+        Some(SocketAddr::new(IpAddr::V4(ip), 53))
+    }
 }

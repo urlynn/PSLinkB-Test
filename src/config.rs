@@ -229,7 +229,7 @@ impl Config {
                                     config.live.live_mode = m;
                                 }
                             }
-                            ("config", "dns_redirect") => {
+                            ("service", "dns_redirect") => {
                                 config.dns_redirect = val != "0";
                             }
                             _ => {}

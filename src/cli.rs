@@ -35,6 +35,18 @@ pub struct Args {
     /// 运行模式: auto (Default) or manual
     #[arg(short = 'm', long)]
     pub mode: Option<String>,
+
+    /// 自定义上游 DNS 服务器 (格式: IP 或 IP:端口)
+    #[arg(short = 'd', long)]
+    pub dns: Option<String>,
+
+    /// 自定义网关地址 (调试日志显示)
+    #[arg(short = 'g', long)]
+    pub gateway: Option<String>,
+
+    /// 开启调试日志输出
+    #[arg(long)]
+    pub debug: bool,
 }
 
 pub fn default_config_path() -> std::path::PathBuf {

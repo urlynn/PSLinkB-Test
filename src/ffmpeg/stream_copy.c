@@ -8,7 +8,7 @@
 #include <string.h>
 
 #ifndef STREAM_VERSION
-#define STREAM_VERSION "0.1.0"
+#define STREAM_VERSION "0.1.1"
 #endif
 
 static char errbuf[256];
