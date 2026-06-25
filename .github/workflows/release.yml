@@ -450,6 +450,7 @@ jobs:
           sudo cp "$APK" /tmp/openwrt-root/tmp/test.apk
           sudo chroot /tmp/openwrt-root apk add --no-network --allow-untrusted /tmp/test.apk
           sudo chroot /tmp/openwrt-root /usr/bin/pslinkb --version && echo "APK OK (x86_64)"
+          echo "=== pkg info ===" && sudo chroot /tmp/openwrt-root apk info pslinkb
       - name: Verify IPK - inspect
         run: |
           set -e; arch=x86_64
@@ -481,6 +482,7 @@ jobs:
           sudo cp "$IPK" /tmp/openwrt-root/tmp/test.ipk
           sudo chroot /tmp/openwrt-root /bin/opkg install /tmp/test.ipk --force-overwrite
           sudo chroot /tmp/openwrt-root /usr/bin/pslinkb --version && echo "IPK OK (x86_64)"
+          echo "=== pkg info ===" && sudo chroot /tmp/openwrt-root /bin/opkg status pslinkb
 
   verify-openwrt-aarch64:
     needs: [package-openwrt]
@@ -504,6 +506,7 @@ jobs:
           sudo cp "$APK" /tmp/openwrt-root/tmp/test.apk
           sudo chroot /tmp/openwrt-root apk add --no-network --allow-untrusted /tmp/test.apk
           sudo chroot /tmp/openwrt-root /usr/bin/pslinkb --version && echo "APK OK (aarch64)"
+          echo "=== pkg info ===" && sudo chroot /tmp/openwrt-root apk info pslinkb
       - name: Verify IPK - inspect
         run: |
           set -e; arch=aarch64
@@ -535,6 +538,7 @@ jobs:
           sudo cp "$IPK" /tmp/openwrt-root/tmp/test.ipk
           sudo chroot /tmp/openwrt-root /bin/opkg install /tmp/test.ipk --force-overwrite
           sudo chroot /tmp/openwrt-root /usr/bin/pslinkb --version && echo "IPK OK (aarch64)"
+          echo "=== pkg info ===" && sudo chroot /tmp/openwrt-root /bin/opkg status pslinkb
   release:
     needs: [package-x86_64, package-aarch64, package-windows, package-macos-aarch64, package-macos-x86_64]
     runs-on: ubuntu-latest
