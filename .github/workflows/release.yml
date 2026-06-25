@@ -439,17 +439,6 @@ jobs:
         with:
           name: pkgs-openwrt
           path: /tmp/pkgs
-      - name: Verify IPK
-        run: |
-          set -e; arch=x86_64
-          IPK=$(ls /tmp/pkgs/pslinkb-*-${arch}-openwrt.ipk 2>/dev/null | head -1)
-          [ -z "$IPK" ] && echo "ERROR: no IPK found" && exit 1
-          curl -sL https://downloads.openwrt.org/releases/24.10.7/targets/x86/64/openwrt-24.10.7-x86-64-rootfs.tar.gz -o /tmp/rootfs.tar.gz
-          mkdir -p /tmp/openwrt-root && sudo tar xzf /tmp/rootfs.tar.gz -C /tmp/openwrt-root --exclude='dev/*'
-          sudo mkdir -p /tmp/openwrt-root/tmp /tmp/openwrt-root/dev /tmp/openwrt-root/var/lock
-          sudo cp "$IPK" /tmp/openwrt-root/tmp/test.ipk
-          sudo chroot /tmp/openwrt-root /bin/opkg install /tmp/test.ipk --force-overwrite
-          sudo chroot /tmp/openwrt-root /usr/bin/pslinkb --version && echo "IPK OK (x86_64)"
       - name: Verify APK
         run: |
           set -e; arch=x86_64
@@ -461,6 +450,17 @@ jobs:
           sudo cp "$APK" /tmp/openwrt-root/tmp/test.apk
           sudo chroot /tmp/openwrt-root /usr/bin/sh -c "apk add --allow-untrusted /tmp/test.apk"
           sudo chroot /tmp/openwrt-root /usr/bin/pslinkb --version && echo "APK OK (x86_64)"
+      - name: Verify IPK
+        run: |
+          set -e; arch=x86_64
+          IPK=$(ls /tmp/pkgs/pslinkb-*-${arch}-openwrt.ipk 2>/dev/null | head -1)
+          [ -z "$IPK" ] && echo "ERROR: no IPK found" && exit 1
+          curl -sL https://downloads.openwrt.org/releases/24.10.7/targets/x86/64/openwrt-24.10.7-x86-64-rootfs.tar.gz -o /tmp/rootfs.tar.gz
+          mkdir -p /tmp/openwrt-root && sudo tar xzf /tmp/rootfs.tar.gz -C /tmp/openwrt-root --exclude='dev/*'
+          sudo mkdir -p /tmp/openwrt-root/tmp /tmp/openwrt-root/dev /tmp/openwrt-root/var/lock
+          sudo cp "$IPK" /tmp/openwrt-root/tmp/test.ipk
+          sudo chroot /tmp/openwrt-root /bin/opkg install /tmp/test.ipk --force-overwrite
+          sudo chroot /tmp/openwrt-root /usr/bin/pslinkb --version && echo "IPK OK (x86_64)"
 
   verify-openwrt-aarch64:
     needs: [package-openwrt]
@@ -473,17 +473,6 @@ jobs:
         with:
           name: pkgs-openwrt
           path: /tmp/pkgs
-      - name: Verify IPK
-        run: |
-          set -e; arch=aarch64
-          IPK=$(ls /tmp/pkgs/pslinkb-*-${arch}-openwrt.ipk 2>/dev/null | head -1)
-          [ -z "$IPK" ] && echo "ERROR: no IPK found" && exit 1
-          curl -sL https://downloads.openwrt.org/releases/24.10.7/targets/armsr/armv8/openwrt-24.10.7-armsr-armv8-rootfs.tar.gz -o /tmp/rootfs.tar.gz
-          mkdir -p /tmp/openwrt-root && sudo tar xzf /tmp/rootfs.tar.gz -C /tmp/openwrt-root --exclude='dev/*'
-          sudo mkdir -p /tmp/openwrt-root/tmp /tmp/openwrt-root/dev /tmp/openwrt-root/var/lock
-          sudo cp "$IPK" /tmp/openwrt-root/tmp/test.ipk
-          sudo chroot /tmp/openwrt-root /bin/opkg install /tmp/test.ipk --force-overwrite
-          sudo chroot /tmp/openwrt-root /usr/bin/pslinkb --version && echo "IPK OK (aarch64)"
       - name: Verify APK
         run: |
           set -e; arch=aarch64
@@ -495,6 +484,17 @@ jobs:
           sudo cp "$APK" /tmp/openwrt-root/tmp/test.apk
           sudo chroot /tmp/openwrt-root /usr/bin/sh -c "apk add --allow-untrusted /tmp/test.apk"
           sudo chroot /tmp/openwrt-root /usr/bin/pslinkb --version && echo "APK OK (aarch64)"
+      - name: Verify IPK
+        run: |
+          set -e; arch=aarch64
+          IPK=$(ls /tmp/pkgs/pslinkb-*-${arch}-openwrt.ipk 2>/dev/null | head -1)
+          [ -z "$IPK" ] && echo "ERROR: no IPK found" && exit 1
+          curl -sL https://downloads.openwrt.org/releases/24.10.7/targets/armsr/armv8/openwrt-24.10.7-armsr-armv8-rootfs.tar.gz -o /tmp/rootfs.tar.gz
+          mkdir -p /tmp/openwrt-root && sudo tar xzf /tmp/rootfs.tar.gz -C /tmp/openwrt-root --exclude='dev/*'
+          sudo mkdir -p /tmp/openwrt-root/tmp /tmp/openwrt-root/dev /tmp/openwrt-root/var/lock
+          sudo cp "$IPK" /tmp/openwrt-root/tmp/test.ipk
+          sudo chroot /tmp/openwrt-root /bin/opkg install /tmp/test.ipk --force-overwrite
+          sudo chroot /tmp/openwrt-root /usr/bin/pslinkb --version && echo "IPK OK (aarch64)"
 
   release:
     needs: [package-x86_64, package-aarch64, package-openwrt, verify-openwrt-x86_64, verify-openwrt-aarch64, package-windows, package-macos-aarch64, package-macos-x86_64]
