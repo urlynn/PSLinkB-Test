@@ -447,7 +447,7 @@ jobs:
           curl -sL https://downloads.openwrt.org/releases/25.12.4/targets/x86/64/openwrt-25.12.4-x86-64-rootfs.tar.gz -o /tmp/rootfs.tar.gz
           mkdir -p /tmp/openwrt-apk-root && sudo tar xf /tmp/rootfs.tar.gz -C /tmp/openwrt-apk-root --exclude='dev/*'
           sudo mkdir -p /tmp/openwrt-apk-root/tmp /tmp/openwrt-apk-root/dev
-          sudo cp /etc/resolv.conf /tmp/openwrt-apk-root/etc/
+          sudo rm -f /tmp/openwrt-apk-root/etc/resolv.conf && sudo cp /etc/resolv.conf /tmp/openwrt-apk-root/etc/resolv.conf
           sudo cp "$APK" /tmp/openwrt-apk-root/tmp/test.apk
           sudo chroot /tmp/openwrt-apk-root apk add --allow-untrusted /tmp/test.apk
           sudo chroot /tmp/openwrt-apk-root /usr/bin/pslinkb --version && echo "APK OK (x86_64)"
@@ -480,7 +480,7 @@ jobs:
           sudo tar xf /tmp/rootfs.tar.gz -C /tmp/openwrt-ipk-root --exclude='dev/*'
           sudo mkdir -p /tmp/openwrt-ipk-root/tmp /tmp/openwrt-ipk-root/dev /tmp/openwrt-ipk-root/var/lock
           sudo mount --bind /dev /tmp/openwrt-ipk-root/dev
-          sudo cp /etc/resolv.conf /tmp/openwrt-ipk-root/etc/
+          sudo rm -f /tmp/openwrt-ipk-root/etc/resolv.conf && sudo cp /etc/resolv.conf /tmp/openwrt-ipk-root/etc/resolv.conf
           IPK=$(ls /tmp/pkgs/pslinkb-*-${arch}-openwrt.ipk 2>/dev/null | head -1)
           [ -z "$IPK" ] && echo "ERROR: no IPK found" && exit 1
           sudo cp "$IPK" /tmp/openwrt-ipk-root/tmp/test.ipk
@@ -518,7 +518,7 @@ jobs:
           curl -sL https://downloads.openwrt.org/releases/25.12.4/targets/armsr/armv8/openwrt-25.12.4-armsr-armv8-rootfs.tar.gz -o /tmp/rootfs.tar.gz
           mkdir -p /tmp/openwrt-apk-root && sudo tar xf /tmp/rootfs.tar.gz -C /tmp/openwrt-apk-root --exclude='dev/*'
           sudo mkdir -p /tmp/openwrt-apk-root/tmp /tmp/openwrt-apk-root/dev
-          sudo cp /etc/resolv.conf /tmp/openwrt-apk-root/etc/
+          sudo rm -f /tmp/openwrt-apk-root/etc/resolv.conf && sudo cp /etc/resolv.conf /tmp/openwrt-apk-root/etc/resolv.conf
           sudo cp "$APK" /tmp/openwrt-apk-root/tmp/test.apk
           sudo chroot /tmp/openwrt-apk-root apk add --allow-untrusted /tmp/test.apk
           sudo chroot /tmp/openwrt-apk-root /usr/bin/pslinkb --version && echo "APK OK (aarch64)"
@@ -541,7 +541,7 @@ jobs:
           sudo tar xzf /tmp/rootfs.tar.gz -C /tmp/openwrt-ipk-root --exclude='dev/*'
           sudo mkdir -p /tmp/openwrt-ipk-root/tmp /tmp/openwrt-ipk-root/dev /tmp/openwrt-ipk-root/var/lock
           sudo mount --bind /dev /tmp/openwrt-ipk-root/dev
-          sudo cp /etc/resolv.conf /tmp/openwrt-ipk-root/etc/
+          sudo rm -f /tmp/openwrt-ipk-root/etc/resolv.conf && sudo cp /etc/resolv.conf /tmp/openwrt-ipk-root/etc/resolv.conf
           IPK=$(ls /tmp/pkgs/pslinkb-*-${arch}-openwrt.ipk 2>/dev/null | head -1)
           [ -z "$IPK" ] && echo "ERROR: no IPK found" && exit 1
           sudo cp "$IPK" /tmp/openwrt-ipk-root/tmp/test.ipk
