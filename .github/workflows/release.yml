@@ -493,7 +493,7 @@ jobs:
           LUCI=$(ls /tmp/pkgs/luci-app-pslinkb-*.ipk 2>/dev/null | head -1)
           [ -z "$LUCI" ] && echo "ERROR: no luci IPK found" && exit 1
           sudo cp "$LUCI" /tmp/openwrt-ipk-root/tmp/luci.ipk
-          sudo chroot /tmp/openwrt-ipk-root /bin/opkg install --force-depends /tmp/luci.ipk && echo "luci IPK OK"
+          sudo chroot /tmp/openwrt-ipk-root /bin/opkg install --nodeps /tmp/luci.ipk && echo "luci IPK OK"
       - name: Verify IPK - umount
         run: sudo umount /tmp/openwrt-ipk-root/dev
 
@@ -550,12 +550,10 @@ jobs:
       - name: Verify luci IPK
         run: |
           set -e
-          curl -sL https://downloads.openwrt.org/releases/24.10.7/packages/aarch64_generic/luci/luci-lib-uqr_26.167.08541~ffc779e_all.ipk -o /tmp/openwrt-ipk-root/tmp/uqr.ipk
-          sudo chroot /tmp/openwrt-ipk-root /bin/opkg install /tmp/uqr.ipk
           LUCI=$(ls /tmp/pkgs/luci-app-pslinkb-*.ipk 2>/dev/null | head -1)
           [ -z "$LUCI" ] && echo "ERROR: no luci IPK found" && exit 1
           sudo cp "$LUCI" /tmp/openwrt-ipk-root/tmp/luci.ipk
-          sudo chroot /tmp/openwrt-ipk-root /bin/opkg install /tmp/luci.ipk && echo "luci IPK OK"
+          sudo chroot /tmp/openwrt-ipk-root /bin/opkg install --nodeps /tmp/luci.ipk && echo "luci IPK OK"
       - name: Verify IPK - umount
         run: sudo umount /tmp/openwrt-ipk-root/dev
   release:
