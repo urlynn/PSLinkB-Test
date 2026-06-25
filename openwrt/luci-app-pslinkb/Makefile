@@ -1,7 +1,6 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-pslinkb
-PKG_VERSION:=0.1.5
 PKG_RELEASE:=1
 PKG_LICENSE:=MIT OR Apache-2.0
 PKG_MAINTAINER:=Urlynn
