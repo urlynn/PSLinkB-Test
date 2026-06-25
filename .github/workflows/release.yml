@@ -72,9 +72,7 @@ jobs:
           cp "$BUN" /tmp/deb/usr/bin/pslinkb && chmod +x /tmp/deb/usr/bin/pslinkb
           [ -n "$STREAM" ] && cp "$STREAM" /tmp/deb/usr/bin/pslinkb-stream && chmod +x /tmp/deb/usr/bin/pslinkb-stream
           printf 'Package: pslinkb\nVersion: %s\nArchitecture: %s\nMaintainer: urlynn\nSection: net\nPriority: optional\nDescription: PS5 to Bilibili live streaming bridge\n' "$V" "$DEB_ARCH" > /tmp/deb/DEBIAN/control
-          tar czf /tmp/ctl.tar.gz -C /tmp/deb/DEBIAN .; tar czf /tmp/dat.tar.gz -C /tmp/deb usr/; echo 2.0 > /tmp/db
-          ar r "${OUT}/pslinkb-${V}-${ARCH}-debian.deb" /tmp/db /tmp/ctl.tar.gz /tmp/dat.tar.gz
-          rm -rf /tmp/deb /tmp/ctl.tar.gz /tmp/dat.tar.gz /tmp/db
+          dpkg-deb -b /tmp/deb "${OUT}/pslinkb-${V}-${ARCH}-debian.deb"
       - name: Package arch linux
         run: |
           set -e; V="${V#v}"; OUT=/tmp/out; mkdir -p "$OUT"
@@ -168,9 +166,7 @@ jobs:
           cp "$BUN" /tmp/deb/usr/bin/pslinkb && chmod +x /tmp/deb/usr/bin/pslinkb
           [ -n "$STREAM" ] && cp "$STREAM" /tmp/deb/usr/bin/pslinkb-stream && chmod +x /tmp/deb/usr/bin/pslinkb-stream
           printf 'Package: pslinkb\nVersion: %s\nArchitecture: %s\nMaintainer: urlynn\nSection: net\nPriority: optional\nDescription: PS5 to Bilibili live streaming bridge\n' "$V" "$DEB_ARCH" > /tmp/deb/DEBIAN/control
-          tar czf /tmp/ctl.tar.gz -C /tmp/deb/DEBIAN .; tar czf /tmp/dat.tar.gz -C /tmp/deb usr/; echo 2.0 > /tmp/db
-          ar r "${OUT}/pslinkb-${V}-${ARCH}-debian.deb" /tmp/db /tmp/ctl.tar.gz /tmp/dat.tar.gz
-          rm -rf /tmp/deb /tmp/ctl.tar.gz /tmp/dat.tar.gz /tmp/db
+          dpkg-deb -b /tmp/deb "${OUT}/pslinkb-${V}-${ARCH}-debian.deb"
       - name: Package arch linux
         run: |
           set -e; V="${V#v}"; OUT=/tmp/out; mkdir -p "$OUT"
