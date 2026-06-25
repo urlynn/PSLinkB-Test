@@ -444,7 +444,7 @@ jobs:
           set -e; arch=x86_64
           APK=$(ls /tmp/pkgs/pslinkb-*-${arch}-openwrt.apk 2>/dev/null | head -1)
           [ -z "$APK" ] && echo "ERROR: no APK found" && exit 1
-          curl -sL https://downloads.openwrt.org/releases/25.12.4/targets/x86/64/openwrt-x86-64-rootfs.tar.gz -o /tmp/rootfs.tar.gz
+          curl -sL https://downloads.openwrt.org/releases/25.12.4/targets/x86/64/openwrt-25.12.4-x86-64-rootfs.tar.gz -o /tmp/rootfs.tar.gz
           mkdir -p /tmp/openwrt-root && sudo tar xf /tmp/rootfs.tar.gz -C /tmp/openwrt-root --exclude='dev/*'
           sudo mkdir -p /tmp/openwrt-root/tmp /tmp/openwrt-root/dev
           sudo cp "$APK" /tmp/openwrt-root/tmp/test.apk
@@ -478,7 +478,7 @@ jobs:
           set -e; arch=aarch64
           APK=$(ls /tmp/pkgs/pslinkb-*-${arch}-openwrt.apk 2>/dev/null | head -1)
           [ -z "$APK" ] && echo "ERROR: no APK found" && exit 1
-          curl -sL https://downloads.openwrt.org/releases/25.12.4/targets/armsr/armv8/openwrt-armsr-armv8-rootfs.tar.gz -o /tmp/rootfs.tar.gz
+          curl -sL https://downloads.openwrt.org/releases/25.12.4/targets/armsr/armv8/openwrt-25.12.4-armsr-armv8-rootfs.tar.gz -o /tmp/rootfs.tar.gz
           mkdir -p /tmp/openwrt-root && sudo tar xf /tmp/rootfs.tar.gz -C /tmp/openwrt-root --exclude='dev/*'
           sudo mkdir -p /tmp/openwrt-root/tmp /tmp/openwrt-root/dev
           sudo cp "$APK" /tmp/openwrt-root/tmp/test.apk
