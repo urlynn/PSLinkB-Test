@@ -448,7 +448,7 @@ jobs:
           mkdir -p /tmp/openwrt-root && sudo tar xf /tmp/rootfs.tar.gz -C /tmp/openwrt-root --exclude='dev/*'
           sudo mkdir -p /tmp/openwrt-root/tmp /tmp/openwrt-root/dev
           sudo cp "$APK" /tmp/openwrt-root/tmp/test.apk
-          sudo chroot /tmp/openwrt-root /usr/bin/sh -c "apk add --allow-untrusted /tmp/test.apk"
+          sudo chroot /tmp/openwrt-root apk add --allow-untrusted /tmp/test.apk
           sudo chroot /tmp/openwrt-root /usr/bin/pslinkb --version && echo "APK OK (x86_64)"
       - name: Verify IPK
         run: |
@@ -482,7 +482,7 @@ jobs:
           mkdir -p /tmp/openwrt-root && sudo tar xf /tmp/rootfs.tar.gz -C /tmp/openwrt-root --exclude='dev/*'
           sudo mkdir -p /tmp/openwrt-root/tmp /tmp/openwrt-root/dev
           sudo cp "$APK" /tmp/openwrt-root/tmp/test.apk
-          sudo chroot /tmp/openwrt-root /usr/bin/sh -c "apk add --allow-untrusted /tmp/test.apk"
+          sudo chroot /tmp/openwrt-root apk add --allow-untrusted /tmp/test.apk
           sudo chroot /tmp/openwrt-root /usr/bin/pslinkb --version && echo "APK OK (aarch64)"
       - name: Verify IPK
         run: |
