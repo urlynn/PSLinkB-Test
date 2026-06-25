@@ -527,7 +527,7 @@ jobs:
       - name: Verify IPK - umount
         run: sudo umount /tmp/openwrt-ipk-root/dev
   release:
-    needs: [package-x86_64, package-aarch64, package-openwrt, package-windows, package-macos-aarch64, package-macos-x86_64]
+    needs: [package-x86_64, package-aarch64, package-openwrt, verify-openwrt-x86_64, verify-openwrt-aarch64, package-windows, package-macos-aarch64, package-macos-x86_64]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     env:
