@@ -495,6 +495,7 @@ jobs:
           LUCI=$(ls /tmp/pkgs/luci-app-pslinkb-*.ipk 2>/dev/null | head -1)
           [ -z "$LUCI" ] && echo "ERROR: no luci IPK found" && exit 1
           sudo cp "$LUCI" /tmp/openwrt-ipk-root/tmp/luci.ipk
+          sudo chroot /tmp/openwrt-ipk-root /bin/opkg update
           sudo chroot /tmp/openwrt-ipk-root /bin/opkg install /tmp/luci.ipk && echo "luci IPK OK"
       - name: Verify IPK - umount
         run: sudo umount /tmp/openwrt-ipk-root/dev
@@ -557,6 +558,7 @@ jobs:
           LUCI=$(ls /tmp/pkgs/luci-app-pslinkb-*.ipk 2>/dev/null | head -1)
           [ -z "$LUCI" ] && echo "ERROR: no luci IPK found" && exit 1
           sudo cp "$LUCI" /tmp/openwrt-ipk-root/tmp/luci.ipk
+          sudo chroot /tmp/openwrt-ipk-root /bin/opkg update
           sudo chroot /tmp/openwrt-ipk-root /bin/opkg install /tmp/luci.ipk && echo "luci IPK OK"
       - name: Verify IPK - umount
         run: sudo umount /tmp/openwrt-ipk-root/dev
