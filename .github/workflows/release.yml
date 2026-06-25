@@ -424,7 +424,7 @@ jobs:
         run: ls -la /tmp/out/
       - uses: actions/upload-artifact@v4
         with:
-          name: debug-openwrt
+          name: pkgs-openwrt
           path: /tmp/out/
           retention-days: 30
 
@@ -437,7 +437,7 @@ jobs:
     steps:
       - uses: actions/download-artifact@v4
         with:
-          name: debug-openwrt
+          name: pkgs-openwrt
           path: /tmp/pkgs
       - name: Verify APK
         run: |
@@ -466,42 +466,23 @@ jobs:
           set -e
           curl -sL https://downloads.openwrt.org/releases/24.10.7/targets/x86/64/openwrt-24.10.7-x86-64-rootfs.tar.gz -o /tmp/rootfs.tar.gz
           ls -la /tmp/rootfs.tar.gz
-      - name: Verify IPK - extract rootfs
+      - name: Verify IPK - setup
         run: |
+          set -e; arch=x86_64
           mkdir -p /tmp/openwrt-ipk-root
           sudo tar xf /tmp/rootfs.tar.gz -C /tmp/openwrt-ipk-root --exclude='dev/*'
           sudo mkdir -p /tmp/openwrt-ipk-root/tmp /tmp/openwrt-ipk-root/dev /tmp/openwrt-ipk-root/var/lock
-          echo "=== rootfs size ==="
-          du -sh /tmp/openwrt-ipk-root 2>/dev/null || true
-      - name: Verify IPK - mount /dev
-        run: sudo mount --bind /dev /tmp/openwrt-ipk-root/dev
-      - name: Verify IPK - locate file
-        run: |
-          set -e; arch=x86_64
+          sudo mount --bind /dev /tmp/openwrt-ipk-root/dev
           IPK=$(ls /tmp/pkgs/pslinkb-*-${arch}-openwrt.ipk 2>/dev/null | head -1)
           [ -z "$IPK" ] && echo "ERROR: no IPK found" && exit 1
-          echo "IPK=$IPK" && ls -la "$IPK" && file "$IPK"
-          gunzip -t "$IPK" && echo "gzip OK" || { echo "gzip BROKEN"; exit 1; }
-          tar tzf "$IPK" | head -10
           sudo cp "$IPK" /tmp/openwrt-ipk-root/tmp/test.ipk
-      - name: Verify IPK - opkg check
-        run: |
-          file /tmp/openwrt-ipk-root/bin/opkg
-          cat /tmp/openwrt-ipk-root/etc/opkg.conf
-          sudo chroot /tmp/openwrt-ipk-root /bin/opkg --version
-      - name: Verify IPK - official test
-        run: |
-          set -e
-          curl -sL https://downloads.openwrt.org/releases/24.10.7/packages/x86_64/packages/coreutils_9.7-r1_x86_64.ipk -o /tmp/openwrt-ipk-root/tmp/official.ipk
-          ls -la /tmp/openwrt-ipk-root/tmp/official.ipk
-          sudo chroot /tmp/openwrt-ipk-root /bin/opkg install /tmp/official.ipk && echo "=== official OK ==="
       - name: Verify IPK - install
         run: sudo chroot /tmp/openwrt-ipk-root /bin/opkg install /tmp/test.ipk
-      - name: Verify IPK - run
+      - name: Verify IPK - verify
         run: |
           sudo chroot /tmp/openwrt-ipk-root /usr/bin/pslinkb --version && echo "IPK OK (x86_64)"
           echo "=== pkg info ===" && sudo chroot /tmp/openwrt-ipk-root /bin/opkg status pslinkb
-      - name: Verify IPK - umount /dev
+      - name: Verify IPK - umount
         run: sudo umount /tmp/openwrt-ipk-root/dev
 
   verify-openwrt-aarch64:
@@ -513,7 +494,7 @@ jobs:
     steps:
       - uses: actions/download-artifact@v4
         with:
-          name: debug-openwrt
+          name: pkgs-openwrt
           path: /tmp/pkgs
       - name: Verify APK
         run: |
@@ -527,50 +508,26 @@ jobs:
           sudo chroot /tmp/openwrt-apk-root apk add --no-network --allow-untrusted /tmp/test.apk
           sudo chroot /tmp/openwrt-apk-root /usr/bin/pslinkb --version && echo "APK OK (aarch64)"
           echo "=== pkg info ===" && sudo chroot /tmp/openwrt-apk-root apk info pslinkb
-      - name: Verify IPK - inspect
+      - name: Verify IPK - setup
         run: |
           set -e; arch=aarch64
-          IPK=$(ls /tmp/pkgs/pslinkb-*-${arch}-openwrt.ipk 2>/dev/null | head -1)
-          [ -z "$IPK" ] && echo "ERROR: no IPK found" && exit 1
-          echo "=== IPK: $IPK ==="
-          ls -la "$IPK"
-          file "$IPK"
-          echo "--- gunzip test ---"
-          gunzip -t "$IPK" && echo "gzip OK" || { echo "gzip BROKEN"; hexdump -C "$IPK" | head -4; exit 1; }
-      - name: Verify IPK - download rootfs
-        run: |
-          set -e
-          curl -sL https://downloads.openwrt.org/releases/24.10.7/targets/armsr/armv8/openwrt-24.10.7-armsr-armv8-rootfs.tar.gz -o /tmp/rootfs.tar.gz
-          ls -la /tmp/rootfs.tar.gz
-      - name: Verify IPK - extract rootfs
-        run: |
           mkdir -p /tmp/openwrt-ipk-root
           sudo tar xzf /tmp/rootfs.tar.gz -C /tmp/openwrt-ipk-root --exclude='dev/*'
           sudo mkdir -p /tmp/openwrt-ipk-root/tmp /tmp/openwrt-ipk-root/dev /tmp/openwrt-ipk-root/var/lock
           sudo mount --bind /dev /tmp/openwrt-ipk-root/dev
-          echo "=== rootfs size ==="
-          du -sh /tmp/openwrt-ipk-root 2>/dev/null || true
-      - name: Verify IPK - preflight
-        run: |
-          set -e; arch=aarch64
           IPK=$(ls /tmp/pkgs/pslinkb-*-${arch}-openwrt.ipk 2>/dev/null | head -1)
           [ -z "$IPK" ] && echo "ERROR: no IPK found" && exit 1
-          echo "=== IPK file ===" && ls -la "$IPK" && file "$IPK"
-          gunzip -t "$IPK" && echo "gzip OK" || { echo "gzip BROKEN"; exit 1; }
-          echo "=== contents ===" && tar tzf "$IPK" | head -10
           sudo cp "$IPK" /tmp/openwrt-ipk-root/tmp/test.ipk
-          echo "=== opkg binary ===" && file /tmp/openwrt-ipk-root/bin/opkg
-          echo "=== opkg help ===" && sudo chroot /tmp/openwrt-ipk-root /bin/opkg --help 2>&1 | head -5
       - name: Verify IPK - install
+        run: sudo chroot /tmp/openwrt-ipk-root /bin/opkg install /tmp/test.ipk
+      - name: Verify IPK - verify
         run: |
-          set -e
-          echo "=== installing ==="
-          sudo chroot /tmp/openwrt-ipk-root /bin/opkg install /tmp/test.ipk
           sudo chroot /tmp/openwrt-ipk-root /usr/bin/pslinkb --version && echo "IPK OK (aarch64)"
           echo "=== pkg info ===" && sudo chroot /tmp/openwrt-ipk-root /bin/opkg status pslinkb
-          sudo umount /tmp/openwrt-ipk-root/dev
+      - name: Verify IPK - umount
+        run: sudo umount /tmp/openwrt-ipk-root/dev
   release:
-    needs: [package-x86_64, package-aarch64, package-windows, package-macos-aarch64, package-macos-x86_64]
+    needs: [package-x86_64, package-aarch64, package-openwrt, package-windows, package-macos-aarch64, package-macos-x86_64]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     env:
