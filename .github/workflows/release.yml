@@ -399,41 +399,13 @@ jobs:
               chmod +x /tmp/bin/${arch}/pslinkb-stream
             fi
           done
-      - name: Package pslinkb apk
+      - name: Package pslinkb (apk + ipk)
         run: |
           set -e; V="${V#v}"
-          ./openwrt-packer/pack.sh --format apk --arch x86_64,aarch64 --version "$V" --bin-dir /tmp/bin --out /tmp/out openwrt/pslinkb
-      - name: Package pslinkb ipk
+          ./openwrt-packer/pack.sh --arch x86_64,aarch64 --version "$V" --bin-dir /tmp/bin --out /tmp/out openwrt/pslinkb
+      - name: Package luci-app-pslinkb (apk + ipk)
         run: |
-          set -e; V="${V#v}"; OUT=/tmp/out; mkdir -p "$OUT"
-          for arch in x86_64 aarch64; do
-            ARCH_IPK="$arch"; [ "$arch" = "aarch64" ] && ARCH_IPK=aarch64_generic
-            STREAM="/tmp/deps-${arch}/stream/pslinkb-stream"; [ -f "$STREAM" ] || STREAM=""
-            rm -rf /tmp/ipk && mkdir -p /tmp/ipk/usr/bin /tmp/ipk/etc/config /tmp/ipk/etc/init.d /tmp/ipk/DEBIAN
-            cp /tmp/bins/pslinkb-${arch}-openwrt /tmp/ipk/usr/bin/pslinkb && chmod +x /tmp/ipk/usr/bin/pslinkb
-            [ -n "$STREAM" ] && cp "$STREAM" /tmp/ipk/usr/bin/pslinkb-stream && chmod +x /tmp/ipk/usr/bin/pslinkb-stream
-            cp openwrt/pslinkb/root/etc/config/pslinkb /tmp/ipk/etc/config/
-            cp openwrt/pslinkb/root/etc/init.d/pslinkb /tmp/ipk/etc/init.d/ && chmod +x /tmp/ipk/etc/init.d/pslinkb
-            if [ -f openwrt/pslinkb/post-install ]; then
-              cp openwrt/pslinkb/post-install /tmp/ipk/DEBIAN/postinst
-              chmod +x /tmp/ipk/DEBIAN/postinst
-            fi
-            printf 'Package: pslinkb\nVersion: %s\nArchitecture: %s\nMaintainer: Urlynn\nSection: net\nPriority: optional\nDescription: PS5 to Bilibili live streaming bridge\n' "$V" "$ARCH_IPK" > /tmp/ipk/DEBIAN/control
-            dpkg-deb --root-owner-group -b /tmp/ipk "${OUT}/pslinkb-${V}-${arch}-openwrt.ipk"
-          done
-      - name: Package luci-app-pslinkb apk
-        run: |
-          ./openwrt-packer/pack.sh --format apk --out /tmp/out openwrt/luci-app-pslinkb
-      - name: Package luci-app-pslinkb ipk
-        run: |
-          set -e; OUT=/tmp/out; mkdir -p "$OUT"
-          SRC=openwrt/luci-app-pslinkb
-          VER=$(tr -d '\n' < "$SRC/VERSION")
-          rm -rf /tmp/lipk && mkdir -p /tmp/lipk/DEBIAN
-          [ -d "$SRC/root" ] && (cd "$SRC/root" && tar cf - . 2>/dev/null | tar xf - -C /tmp/lipk) || true
-          [ -d "$SRC/htdocs" ] && (mkdir -p /tmp/lipk/www && cp -a "$SRC/htdocs/." /tmp/lipk/www/ 2>/dev/null) || true
-          printf 'Package: luci-app-pslinkb\nVersion: %s\nArchitecture: all\nDepends: luci-lib-uqr\nMaintainer: Urlynn\nDescription: LuCI interface for PSLinkB\n' "$VER" > /tmp/lipk/DEBIAN/control
-          dpkg-deb --root-owner-group -b /tmp/lipk "${OUT}/luci-app-pslinkb-${VER}.ipk"
+          ./openwrt-packer/pack.sh --out /tmp/out openwrt/luci-app-pslinkb
       - name: Package tar.gz (x86_64 + aarch64)
         run: |
           set -e; V="${V#v}"; OUT=/tmp/out; mkdir -p "$OUT"
