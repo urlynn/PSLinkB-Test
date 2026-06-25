@@ -445,12 +445,12 @@ jobs:
           APK=$(ls /tmp/pkgs/pslinkb-*-${arch}-openwrt.apk 2>/dev/null | head -1)
           [ -z "$APK" ] && echo "ERROR: no APK found" && exit 1
           curl -sL https://downloads.openwrt.org/releases/25.12.4/targets/x86/64/openwrt-25.12.4-x86-64-rootfs.tar.gz -o /tmp/rootfs.tar.gz
-          mkdir -p /tmp/openwrt-root && sudo tar xf /tmp/rootfs.tar.gz -C /tmp/openwrt-root --exclude='dev/*'
-          sudo mkdir -p /tmp/openwrt-root/tmp /tmp/openwrt-root/dev
-          sudo cp "$APK" /tmp/openwrt-root/tmp/test.apk
-          sudo chroot /tmp/openwrt-root apk add --no-network --allow-untrusted /tmp/test.apk
-          sudo chroot /tmp/openwrt-root /usr/bin/pslinkb --version && echo "APK OK (x86_64)"
-          echo "=== pkg info ===" && sudo chroot /tmp/openwrt-root apk info pslinkb
+          mkdir -p /tmp/openwrt-apk-root && sudo tar xf /tmp/rootfs.tar.gz -C /tmp/openwrt-apk-root --exclude='dev/*'
+          sudo mkdir -p /tmp/openwrt-apk-root/tmp /tmp/openwrt-apk-root/dev
+          sudo cp "$APK" /tmp/openwrt-apk-root/tmp/test.apk
+          sudo chroot /tmp/openwrt-apk-root apk add --no-network --allow-untrusted /tmp/test.apk
+          sudo chroot /tmp/openwrt-apk-root /usr/bin/pslinkb --version && echo "APK OK (x86_64)"
+          echo "=== pkg info ===" && sudo chroot /tmp/openwrt-apk-root apk info pslinkb
       - name: Verify IPK - inspect
         run: |
           set -e; arch=x86_64
@@ -468,21 +468,20 @@ jobs:
           ls -la /tmp/rootfs.tar.gz
       - name: Verify IPK - extract rootfs
         run: |
-          set -e
-          mkdir -p /tmp/openwrt-root
-          sudo tar xf /tmp/rootfs.tar.gz -C /tmp/openwrt-root --exclude='dev/*'
-          sudo mkdir -p /tmp/openwrt-root/tmp /tmp/openwrt-root/dev /tmp/openwrt-root/var/lock
+          mkdir -p /tmp/openwrt-ipk-root
+          sudo tar xf /tmp/rootfs.tar.gz -C /tmp/openwrt-ipk-root --exclude='dev/*'
+          sudo mkdir -p /tmp/openwrt-ipk-root/tmp /tmp/openwrt-ipk-root/dev /tmp/openwrt-ipk-root/var/lock
           echo "=== rootfs size ==="
-          du -sh /tmp/openwrt-root
+          du -sh /tmp/openwrt-ipk-root 2>/dev/null || true
       - name: Verify IPK - install
         run: |
           set -e; arch=x86_64
           IPK=$(ls /tmp/pkgs/pslinkb-*-${arch}-openwrt.ipk 2>/dev/null | head -1)
           [ -z "$IPK" ] && echo "ERROR: no IPK found" && exit 1
-          sudo cp "$IPK" /tmp/openwrt-root/tmp/test.ipk
-          sudo chroot /tmp/openwrt-root /bin/opkg install /tmp/test.ipk --force-overwrite
-          sudo chroot /tmp/openwrt-root /usr/bin/pslinkb --version && echo "IPK OK (x86_64)"
-          echo "=== pkg info ===" && sudo chroot /tmp/openwrt-root /bin/opkg status pslinkb
+          sudo cp "$IPK" /tmp/openwrt-ipk-root/tmp/test.ipk
+          sudo chroot /tmp/openwrt-ipk-root /bin/opkg install /tmp/test.ipk --force-overwrite
+          sudo chroot /tmp/openwrt-ipk-root /usr/bin/pslinkb --version && echo "IPK OK (x86_64)"
+          echo "=== pkg info ===" && sudo chroot /tmp/openwrt-ipk-root /bin/opkg status pslinkb
 
   verify-openwrt-aarch64:
     needs: [package-openwrt]
@@ -501,12 +500,12 @@ jobs:
           APK=$(ls /tmp/pkgs/pslinkb-*-${arch}-openwrt.apk 2>/dev/null | head -1)
           [ -z "$APK" ] && echo "ERROR: no APK found" && exit 1
           curl -sL https://downloads.openwrt.org/releases/25.12.4/targets/armsr/armv8/openwrt-25.12.4-armsr-armv8-rootfs.tar.gz -o /tmp/rootfs.tar.gz
-          mkdir -p /tmp/openwrt-root && sudo tar xf /tmp/rootfs.tar.gz -C /tmp/openwrt-root --exclude='dev/*'
-          sudo mkdir -p /tmp/openwrt-root/tmp /tmp/openwrt-root/dev
-          sudo cp "$APK" /tmp/openwrt-root/tmp/test.apk
-          sudo chroot /tmp/openwrt-root apk add --no-network --allow-untrusted /tmp/test.apk
-          sudo chroot /tmp/openwrt-root /usr/bin/pslinkb --version && echo "APK OK (aarch64)"
-          echo "=== pkg info ===" && sudo chroot /tmp/openwrt-root apk info pslinkb
+          mkdir -p /tmp/openwrt-apk-root && sudo tar xf /tmp/rootfs.tar.gz -C /tmp/openwrt-apk-root --exclude='dev/*'
+          sudo mkdir -p /tmp/openwrt-apk-root/tmp /tmp/openwrt-apk-root/dev
+          sudo cp "$APK" /tmp/openwrt-apk-root/tmp/test.apk
+          sudo chroot /tmp/openwrt-apk-root apk add --no-network --allow-untrusted /tmp/test.apk
+          sudo chroot /tmp/openwrt-apk-root /usr/bin/pslinkb --version && echo "APK OK (aarch64)"
+          echo "=== pkg info ===" && sudo chroot /tmp/openwrt-apk-root apk info pslinkb
       - name: Verify IPK - inspect
         run: |
           set -e; arch=aarch64
@@ -524,21 +523,20 @@ jobs:
           ls -la /tmp/rootfs.tar.gz
       - name: Verify IPK - extract rootfs
         run: |
-          set -e
-          mkdir -p /tmp/openwrt-root
-          sudo tar xzf /tmp/rootfs.tar.gz -C /tmp/openwrt-root --exclude='dev/*'
-          sudo mkdir -p /tmp/openwrt-root/tmp /tmp/openwrt-root/dev /tmp/openwrt-root/var/lock
+          mkdir -p /tmp/openwrt-ipk-root
+          sudo tar xzf /tmp/rootfs.tar.gz -C /tmp/openwrt-ipk-root --exclude='dev/*'
+          sudo mkdir -p /tmp/openwrt-ipk-root/tmp /tmp/openwrt-ipk-root/dev /tmp/openwrt-ipk-root/var/lock
           echo "=== rootfs size ==="
-          du -sh /tmp/openwrt-root
+          du -sh /tmp/openwrt-ipk-root 2>/dev/null || true
       - name: Verify IPK - install
         run: |
           set -e; arch=aarch64
           IPK=$(ls /tmp/pkgs/pslinkb-*-${arch}-openwrt.ipk 2>/dev/null | head -1)
           [ -z "$IPK" ] && echo "ERROR: no IPK found" && exit 1
-          sudo cp "$IPK" /tmp/openwrt-root/tmp/test.ipk
-          sudo chroot /tmp/openwrt-root /bin/opkg install /tmp/test.ipk --force-overwrite
-          sudo chroot /tmp/openwrt-root /usr/bin/pslinkb --version && echo "IPK OK (aarch64)"
-          echo "=== pkg info ===" && sudo chroot /tmp/openwrt-root /bin/opkg status pslinkb
+          sudo cp "$IPK" /tmp/openwrt-ipk-root/tmp/test.ipk
+          sudo chroot /tmp/openwrt-ipk-root /bin/opkg install /tmp/test.ipk --force-overwrite
+          sudo chroot /tmp/openwrt-ipk-root /usr/bin/pslinkb --version && echo "IPK OK (aarch64)"
+          echo "=== pkg info ===" && sudo chroot /tmp/openwrt-ipk-root /bin/opkg status pslinkb
   release:
     needs: [package-x86_64, package-aarch64, package-windows, package-macos-aarch64, package-macos-x86_64]
     runs-on: ubuntu-latest
