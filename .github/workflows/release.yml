@@ -473,13 +473,22 @@ jobs:
           sudo mkdir -p /tmp/openwrt-ipk-root/tmp /tmp/openwrt-ipk-root/dev /tmp/openwrt-ipk-root/var/lock
           echo "=== rootfs size ==="
           du -sh /tmp/openwrt-ipk-root 2>/dev/null || true
-      - name: Verify IPK - install
+      - name: Verify IPK - preflight
         run: |
           set -e; arch=x86_64
           IPK=$(ls /tmp/pkgs/pslinkb-*-${arch}-openwrt.ipk 2>/dev/null | head -1)
           [ -z "$IPK" ] && echo "ERROR: no IPK found" && exit 1
+          echo "=== IPK file ===" && ls -la "$IPK" && file "$IPK"
+          gunzip -t "$IPK" && echo "gzip OK" || { echo "gzip BROKEN"; exit 1; }
+          echo "=== contents ===" && tar tzf "$IPK" | head -10
           sudo cp "$IPK" /tmp/openwrt-ipk-root/tmp/test.ipk
-          sudo chroot /tmp/openwrt-ipk-root /bin/opkg install /tmp/test.ipk --force-overwrite
+          echo "=== opkg binary ===" && file /tmp/openwrt-ipk-root/bin/opkg
+          echo "=== opkg help ===" && sudo chroot /tmp/openwrt-ipk-root /bin/opkg --help 2>&1 | head -5
+      - name: Verify IPK - install
+        run: |
+          set -e
+          echo "=== installing ==="
+          sudo chroot /tmp/openwrt-ipk-root /bin/opkg install /tmp/test.ipk --force-overwrite --verbosity=2 2>&1
           sudo chroot /tmp/openwrt-ipk-root /usr/bin/pslinkb --version && echo "IPK OK (x86_64)"
           echo "=== pkg info ===" && sudo chroot /tmp/openwrt-ipk-root /bin/opkg status pslinkb
 
@@ -528,13 +537,22 @@ jobs:
           sudo mkdir -p /tmp/openwrt-ipk-root/tmp /tmp/openwrt-ipk-root/dev /tmp/openwrt-ipk-root/var/lock
           echo "=== rootfs size ==="
           du -sh /tmp/openwrt-ipk-root 2>/dev/null || true
-      - name: Verify IPK - install
+      - name: Verify IPK - preflight
         run: |
           set -e; arch=aarch64
           IPK=$(ls /tmp/pkgs/pslinkb-*-${arch}-openwrt.ipk 2>/dev/null | head -1)
           [ -z "$IPK" ] && echo "ERROR: no IPK found" && exit 1
+          echo "=== IPK file ===" && ls -la "$IPK" && file "$IPK"
+          gunzip -t "$IPK" && echo "gzip OK" || { echo "gzip BROKEN"; exit 1; }
+          echo "=== contents ===" && tar tzf "$IPK" | head -10
           sudo cp "$IPK" /tmp/openwrt-ipk-root/tmp/test.ipk
-          sudo chroot /tmp/openwrt-ipk-root /bin/opkg install /tmp/test.ipk --force-overwrite
+          echo "=== opkg binary ===" && file /tmp/openwrt-ipk-root/bin/opkg
+          echo "=== opkg help ===" && sudo chroot /tmp/openwrt-ipk-root /bin/opkg --help 2>&1 | head -5
+      - name: Verify IPK - install
+        run: |
+          set -e
+          echo "=== installing ==="
+          sudo chroot /tmp/openwrt-ipk-root /bin/opkg install /tmp/test.ipk --force-overwrite --verbosity=2 2>&1
           sudo chroot /tmp/openwrt-ipk-root /usr/bin/pslinkb --version && echo "IPK OK (aarch64)"
           echo "=== pkg info ===" && sudo chroot /tmp/openwrt-ipk-root /bin/opkg status pslinkb
   release:
