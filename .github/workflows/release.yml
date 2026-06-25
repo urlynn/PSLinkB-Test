@@ -41,7 +41,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release download ${{ inputs.deps-tag }} --repo ${{ github.repository }} -p 'pslinkb-deps-linux-x86_64.tar.gz' -D /tmp/ --clobber || true
-          mkdir -p /tmp/deps && [ -f /tmp/pslinkb-deps-linux-x86_64.tar.gz ] && tar xzf /tmp/pslinkb-deps-linux-x86_64.tar.gz -C /tmp/deps || true
+          mkdir -p /tmp/deps && [ -f /tmp/pslinkb-deps-linux-x86_64.tar.gz ] && tar xf /tmp/pslinkb-deps-linux-x86_64.tar.gz -C /tmp/deps || true
       - name: Install zstd
         run: sudo apt-get install -y zstd
       - name: Verify stream
@@ -141,7 +141,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release download ${{ inputs.deps-tag }} --repo ${{ github.repository }} -p 'pslinkb-deps-linux-aarch64.tar.gz' -D /tmp/ --clobber || true
-          mkdir -p /tmp/deps && [ -f /tmp/pslinkb-deps-linux-aarch64.tar.gz ] && tar xzf /tmp/pslinkb-deps-linux-aarch64.tar.gz -C /tmp/deps || true
+          mkdir -p /tmp/deps && [ -f /tmp/pslinkb-deps-linux-aarch64.tar.gz ] && tar xf /tmp/pslinkb-deps-linux-aarch64.tar.gz -C /tmp/deps || true
       - name: Install zstd
         run: sudo apt-get install -y zstd
       - name: Verify stream
@@ -245,7 +245,7 @@ jobs:
         shell: bash
         run: |
           set -e; V="${V#v}"; OUT=/tmp/out; rm -rf "$OUT" && mkdir -p "$OUT"
-          [ -f /tmp/pslinkb-deps-windows-x86_64.tar.gz ] && mkdir -p /tmp/deps && tar xzf /tmp/pslinkb-deps-windows-x86_64.tar.gz -C /tmp/deps || true
+          [ -f /tmp/pslinkb-deps-windows-x86_64.tar.gz ] && mkdir -p /tmp/deps && tar xf /tmp/pslinkb-deps-windows-x86_64.tar.gz -C /tmp/deps || true
           STREAM="/tmp/deps/stream/pslinkb-stream.exe"; [ -f "$STREAM" ] || STREAM=""
           rm -rf /tmp/win && mkdir -p /tmp/win
           cp /tmp/bins/pslinkb-x86_64-windows.exe /tmp/win/pslinkb.exe
@@ -300,7 +300,7 @@ jobs:
           F="/tmp/out/pslinkb-${V}-${ARCH}-macos.tar.gz"
           [ -f "$F" ] && [ -s "$F" ] || { echo "ERROR: .tar.gz invalid" && exit 1; }
           rm -rf /tmp/tarcheck && mkdir -p /tmp/tarcheck
-          tar xzf "$F" -C /tmp/tarcheck
+          tar xf "$F" -C /tmp/tarcheck
           [ -x /tmp/tarcheck/pslinkb ] || { echo "ERROR: binary not executable in tar.gz" && exit 1; }
           /tmp/tarcheck/pslinkb --version && rm -rf /tmp/tarcheck && echo "macOS ${ARCH} .tar.gz OK"
       - uses: actions/upload-artifact@v4
@@ -344,7 +344,7 @@ jobs:
           F="/tmp/out/pslinkb-${V}-${ARCH}-macos.tar.gz"
           [ -f "$F" ] && [ -s "$F" ] || { echo "ERROR: .tar.gz invalid" && exit 1; }
           rm -rf /tmp/tarcheck && mkdir -p /tmp/tarcheck
-          tar xzf "$F" -C /tmp/tarcheck
+          tar xf "$F" -C /tmp/tarcheck
           [ -x /tmp/tarcheck/pslinkb ] || { echo "ERROR: binary not executable in tar.gz" && exit 1; }
           /tmp/tarcheck/pslinkb --version && rm -rf /tmp/tarcheck && echo "macOS ${ARCH} .tar.gz OK"
       - uses: actions/upload-artifact@v4
@@ -367,7 +367,7 @@ jobs:
         run: |
           gh release download ${{ inputs.deps-tag }} --repo ${{ github.repository }} \
             -p 'openwrt-packer.tar.gz' -D /tmp/ --clobber
-          tar xzf /tmp/openwrt-packer.tar.gz -C ./
+          tar xf /tmp/openwrt-packer.tar.gz -C ./
       - name: Download binaries (both archs)
         env:
           GH_TOKEN: ${{ github.token }}
@@ -386,8 +386,8 @@ jobs:
               -p "pslinkb-deps-linux-${arch}.tar.gz" -D /tmp/ --clobber || true
           done
           mkdir -p /tmp/deps-x86_64 /tmp/deps-aarch64
-          [ -f /tmp/pslinkb-deps-linux-x86_64.tar.gz ] && tar xzf /tmp/pslinkb-deps-linux-x86_64.tar.gz -C /tmp/deps-x86_64 || true
-          [ -f /tmp/pslinkb-deps-linux-aarch64.tar.gz ] && tar xzf /tmp/pslinkb-deps-linux-aarch64.tar.gz -C /tmp/deps-aarch64 || true
+          [ -f /tmp/pslinkb-deps-linux-x86_64.tar.gz ] && tar xf /tmp/pslinkb-deps-linux-x86_64.tar.gz -C /tmp/deps-x86_64 || true
+          [ -f /tmp/pslinkb-deps-linux-aarch64.tar.gz ] && tar xf /tmp/pslinkb-deps-linux-aarch64.tar.gz -C /tmp/deps-aarch64 || true
       - name: Setup bin dir
         run: |
           set -e
@@ -445,7 +445,7 @@ jobs:
           APK=$(ls /tmp/pkgs/pslinkb-*-${arch}-openwrt.apk 2>/dev/null | head -1)
           [ -z "$APK" ] && echo "ERROR: no APK found" && exit 1
           curl -sL https://downloads.openwrt.org/releases/25.12.4/targets/x86/64/openwrt-x86-64-rootfs.tar.gz -o /tmp/rootfs.tar.gz
-          mkdir -p /tmp/openwrt-root && sudo tar xzf /tmp/rootfs.tar.gz -C /tmp/openwrt-root --exclude='dev/*'
+          mkdir -p /tmp/openwrt-root && sudo tar xf /tmp/rootfs.tar.gz -C /tmp/openwrt-root --exclude='dev/*'
           sudo mkdir -p /tmp/openwrt-root/tmp /tmp/openwrt-root/dev
           sudo cp "$APK" /tmp/openwrt-root/tmp/test.apk
           sudo chroot /tmp/openwrt-root /usr/bin/sh -c "apk add --allow-untrusted /tmp/test.apk"
@@ -456,7 +456,7 @@ jobs:
           IPK=$(ls /tmp/pkgs/pslinkb-*-${arch}-openwrt.ipk 2>/dev/null | head -1)
           [ -z "$IPK" ] && echo "ERROR: no IPK found" && exit 1
           curl -sL https://downloads.openwrt.org/releases/24.10.7/targets/x86/64/openwrt-24.10.7-x86-64-rootfs.tar.gz -o /tmp/rootfs.tar.gz
-          mkdir -p /tmp/openwrt-root && sudo tar xzf /tmp/rootfs.tar.gz -C /tmp/openwrt-root --exclude='dev/*'
+          mkdir -p /tmp/openwrt-root && sudo tar xf /tmp/rootfs.tar.gz -C /tmp/openwrt-root --exclude='dev/*'
           sudo mkdir -p /tmp/openwrt-root/tmp /tmp/openwrt-root/dev /tmp/openwrt-root/var/lock
           sudo cp "$IPK" /tmp/openwrt-root/tmp/test.ipk
           sudo chroot /tmp/openwrt-root /bin/opkg install /tmp/test.ipk --force-overwrite
@@ -479,7 +479,7 @@ jobs:
           APK=$(ls /tmp/pkgs/pslinkb-*-${arch}-openwrt.apk 2>/dev/null | head -1)
           [ -z "$APK" ] && echo "ERROR: no APK found" && exit 1
           curl -sL https://downloads.openwrt.org/releases/25.12.4/targets/armsr/armv8/openwrt-armsr-armv8-rootfs.tar.gz -o /tmp/rootfs.tar.gz
-          mkdir -p /tmp/openwrt-root && sudo tar xzf /tmp/rootfs.tar.gz -C /tmp/openwrt-root --exclude='dev/*'
+          mkdir -p /tmp/openwrt-root && sudo tar xf /tmp/rootfs.tar.gz -C /tmp/openwrt-root --exclude='dev/*'
           sudo mkdir -p /tmp/openwrt-root/tmp /tmp/openwrt-root/dev
           sudo cp "$APK" /tmp/openwrt-root/tmp/test.apk
           sudo chroot /tmp/openwrt-root /usr/bin/sh -c "apk add --allow-untrusted /tmp/test.apk"
@@ -490,7 +490,7 @@ jobs:
           IPK=$(ls /tmp/pkgs/pslinkb-*-${arch}-openwrt.ipk 2>/dev/null | head -1)
           [ -z "$IPK" ] && echo "ERROR: no IPK found" && exit 1
           curl -sL https://downloads.openwrt.org/releases/24.10.7/targets/armsr/armv8/openwrt-24.10.7-armsr-armv8-rootfs.tar.gz -o /tmp/rootfs.tar.gz
-          mkdir -p /tmp/openwrt-root && sudo tar xzf /tmp/rootfs.tar.gz -C /tmp/openwrt-root --exclude='dev/*'
+          mkdir -p /tmp/openwrt-root && sudo tar xf /tmp/rootfs.tar.gz -C /tmp/openwrt-root --exclude='dev/*'
           sudo mkdir -p /tmp/openwrt-root/tmp /tmp/openwrt-root/dev /tmp/openwrt-root/var/lock
           sudo cp "$IPK" /tmp/openwrt-root/tmp/test.ipk
           sudo chroot /tmp/openwrt-root /bin/opkg install /tmp/test.ipk --force-overwrite
