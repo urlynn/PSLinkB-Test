@@ -481,6 +481,7 @@ jobs:
           sudo mkdir -p /tmp/openwrt-ipk-root/tmp /tmp/openwrt-ipk-root/dev /tmp/openwrt-ipk-root/var/lock
           sudo mount --bind /dev /tmp/openwrt-ipk-root/dev
           sudo rm -f /tmp/openwrt-ipk-root/etc/resolv.conf && sudo cp /etc/resolv.conf /tmp/openwrt-ipk-root/etc/resolv.conf
+          sudo chroot /tmp/openwrt-ipk-root /bin/opkg update
           IPK=$(ls /tmp/pkgs/pslinkb-*-${arch}-openwrt.ipk 2>/dev/null | head -1)
           [ -z "$IPK" ] && echo "ERROR: no IPK found" && exit 1
           sudo cp "$IPK" /tmp/openwrt-ipk-root/tmp/test.ipk
@@ -495,7 +496,6 @@ jobs:
           LUCI=$(ls /tmp/pkgs/luci-app-pslinkb-*.ipk 2>/dev/null | head -1)
           [ -z "$LUCI" ] && echo "ERROR: no luci IPK found" && exit 1
           sudo cp "$LUCI" /tmp/openwrt-ipk-root/tmp/luci.ipk
-          sudo chroot /tmp/openwrt-ipk-root /bin/opkg update
           sudo chroot /tmp/openwrt-ipk-root /bin/opkg install /tmp/luci.ipk && echo "luci IPK OK"
       - name: Verify IPK - umount
         run: sudo umount /tmp/openwrt-ipk-root/dev
@@ -543,6 +543,7 @@ jobs:
           sudo mkdir -p /tmp/openwrt-ipk-root/tmp /tmp/openwrt-ipk-root/dev /tmp/openwrt-ipk-root/var/lock
           sudo mount --bind /dev /tmp/openwrt-ipk-root/dev
           sudo rm -f /tmp/openwrt-ipk-root/etc/resolv.conf && sudo cp /etc/resolv.conf /tmp/openwrt-ipk-root/etc/resolv.conf
+          sudo chroot /tmp/openwrt-ipk-root /bin/opkg update
           IPK=$(ls /tmp/pkgs/pslinkb-*-${arch}-openwrt.ipk 2>/dev/null | head -1)
           [ -z "$IPK" ] && echo "ERROR: no IPK found" && exit 1
           sudo cp "$IPK" /tmp/openwrt-ipk-root/tmp/test.ipk
@@ -558,7 +559,6 @@ jobs:
           LUCI=$(ls /tmp/pkgs/luci-app-pslinkb-*.ipk 2>/dev/null | head -1)
           [ -z "$LUCI" ] && echo "ERROR: no luci IPK found" && exit 1
           sudo cp "$LUCI" /tmp/openwrt-ipk-root/tmp/luci.ipk
-          sudo chroot /tmp/openwrt-ipk-root /bin/opkg update
           sudo chroot /tmp/openwrt-ipk-root /bin/opkg install /tmp/luci.ipk && echo "luci IPK OK"
       - name: Verify IPK - umount
         run: sudo umount /tmp/openwrt-ipk-root/dev
