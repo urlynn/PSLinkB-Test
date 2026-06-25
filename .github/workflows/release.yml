@@ -471,32 +471,38 @@ jobs:
           mkdir -p /tmp/openwrt-ipk-root
           sudo tar xf /tmp/rootfs.tar.gz -C /tmp/openwrt-ipk-root --exclude='dev/*'
           sudo mkdir -p /tmp/openwrt-ipk-root/tmp /tmp/openwrt-ipk-root/dev /tmp/openwrt-ipk-root/var/lock
-          sudo mount --bind /dev /tmp/openwrt-ipk-root/dev
           echo "=== rootfs size ==="
           du -sh /tmp/openwrt-ipk-root 2>/dev/null || true
-      - name: Verify IPK - preflight
+      - name: Verify IPK - mount /dev
+        run: sudo mount --bind /dev /tmp/openwrt-ipk-root/dev
+      - name: Verify IPK - locate file
         run: |
           set -e; arch=x86_64
           IPK=$(ls /tmp/pkgs/pslinkb-*-${arch}-openwrt.ipk 2>/dev/null | head -1)
           [ -z "$IPK" ] && echo "ERROR: no IPK found" && exit 1
-          echo "=== IPK file ===" && ls -la "$IPK" && file "$IPK"
+          echo "IPK=$IPK" && ls -la "$IPK" && file "$IPK"
           gunzip -t "$IPK" && echo "gzip OK" || { echo "gzip BROKEN"; exit 1; }
-          echo "=== contents ===" && tar tzf "$IPK" | head -10
+          tar tzf "$IPK" | head -10
           sudo cp "$IPK" /tmp/openwrt-ipk-root/tmp/test.ipk
-          echo "=== opkg binary ===" && file /tmp/openwrt-ipk-root/bin/opkg
-          echo "=== opkg conf ===" && cat /tmp/openwrt-ipk-root/etc/opkg.conf
-          echo "=== opkg version ===" && sudo chroot /tmp/openwrt-ipk-root /bin/opkg --version
-          echo "=== test official ipk ==="
-          curl -sL https://downloads.openwrt.org/releases/24.10.7/packages/x86_64/packages/coreutils_9.7-r1_x86_64.ipk -o /tmp/openwrt-ipk-root/tmp/official.ipk
-          sudo chroot /tmp/openwrt-ipk-root /bin/opkg install /tmp/official.ipk && echo "official OK" || { echo "official FAILED"; exit 1; }
-      - name: Verify IPK - install
+      - name: Verify IPK - opkg check
+        run: |
+          file /tmp/openwrt-ipk-root/bin/opkg
+          cat /tmp/openwrt-ipk-root/etc/opkg.conf
+          sudo chroot /tmp/openwrt-ipk-root /bin/opkg --version
+      - name: Verify IPK - official test
         run: |
           set -e
-          echo "=== installing ==="
-          sudo chroot /tmp/openwrt-ipk-root /bin/opkg install /tmp/test.ipk
+          curl -sL https://downloads.openwrt.org/releases/24.10.7/packages/x86_64/packages/coreutils_9.7-r1_x86_64.ipk -o /tmp/openwrt-ipk-root/tmp/official.ipk
+          ls -la /tmp/openwrt-ipk-root/tmp/official.ipk
+          sudo chroot /tmp/openwrt-ipk-root /bin/opkg install /tmp/official.ipk && echo "=== official OK ==="
+      - name: Verify IPK - install
+        run: sudo chroot /tmp/openwrt-ipk-root /bin/opkg install /tmp/test.ipk
+      - name: Verify IPK - run
+        run: |
           sudo chroot /tmp/openwrt-ipk-root /usr/bin/pslinkb --version && echo "IPK OK (x86_64)"
           echo "=== pkg info ===" && sudo chroot /tmp/openwrt-ipk-root /bin/opkg status pslinkb
-          sudo umount /tmp/openwrt-ipk-root/dev
+      - name: Verify IPK - umount /dev
+        run: sudo umount /tmp/openwrt-ipk-root/dev
 
   verify-openwrt-aarch64:
     needs: [package-openwrt]
