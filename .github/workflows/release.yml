@@ -508,6 +508,11 @@ jobs:
           sudo chroot /tmp/openwrt-apk-root apk add --no-network --allow-untrusted /tmp/test.apk
           sudo chroot /tmp/openwrt-apk-root /usr/bin/pslinkb --version && echo "APK OK (aarch64)"
           echo "=== pkg info ===" && sudo chroot /tmp/openwrt-apk-root apk info pslinkb
+      - name: Verify IPK - download rootfs
+        run: |
+          set -e
+          curl -sL https://downloads.openwrt.org/releases/24.10.7/targets/armsr/armv8/openwrt-24.10.7-armsr-armv8-rootfs.tar.gz -o /tmp/rootfs.tar.gz
+          ls -la /tmp/rootfs.tar.gz
       - name: Verify IPK - setup
         run: |
           set -e; arch=aarch64
