@@ -450,14 +450,34 @@ jobs:
           sudo cp "$APK" /tmp/openwrt-root/tmp/test.apk
           sudo chroot /tmp/openwrt-root apk add --allow-untrusted /tmp/test.apk
           sudo chroot /tmp/openwrt-root /usr/bin/pslinkb --version && echo "APK OK (x86_64)"
-      - name: Verify IPK
+      - name: Verify IPK - inspect
         run: |
           set -e; arch=x86_64
           IPK=$(ls /tmp/pkgs/pslinkb-*-${arch}-openwrt.ipk 2>/dev/null | head -1)
           [ -z "$IPK" ] && echo "ERROR: no IPK found" && exit 1
+          echo "=== IPK: $IPK ==="
+          ls -la "$IPK"
+          file "$IPK"
+          echo "--- gunzip test ---"
+          gunzip -t "$IPK" && echo "gzip OK" || { echo "gzip BROKEN"; hexdump -C "$IPK" | head -4; exit 1; }
+      - name: Verify IPK - download rootfs
+        run: |
+          set -e
           curl -sL https://downloads.openwrt.org/releases/24.10.7/targets/x86/64/openwrt-24.10.7-x86-64-rootfs.tar.gz -o /tmp/rootfs.tar.gz
-          mkdir -p /tmp/openwrt-root && sudo tar xf /tmp/rootfs.tar.gz -C /tmp/openwrt-root --exclude='dev/*'
+          ls -la /tmp/rootfs.tar.gz
+      - name: Verify IPK - extract rootfs
+        run: |
+          set -e
+          mkdir -p /tmp/openwrt-root
+          sudo tar xf /tmp/rootfs.tar.gz -C /tmp/openwrt-root --exclude='dev/*'
           sudo mkdir -p /tmp/openwrt-root/tmp /tmp/openwrt-root/dev /tmp/openwrt-root/var/lock
+          echo "=== rootfs size ==="
+          du -sh /tmp/openwrt-root
+      - name: Verify IPK - install
+        run: |
+          set -e; arch=x86_64
+          IPK=$(ls /tmp/pkgs/pslinkb-*-${arch}-openwrt.ipk 2>/dev/null | head -1)
+          [ -z "$IPK" ] && echo "ERROR: no IPK found" && exit 1
           sudo cp "$IPK" /tmp/openwrt-root/tmp/test.ipk
           sudo chroot /tmp/openwrt-root /bin/opkg install /tmp/test.ipk --force-overwrite
           sudo chroot /tmp/openwrt-root /usr/bin/pslinkb --version && echo "IPK OK (x86_64)"
@@ -484,18 +504,37 @@ jobs:
           sudo cp "$APK" /tmp/openwrt-root/tmp/test.apk
           sudo chroot /tmp/openwrt-root apk add --allow-untrusted /tmp/test.apk
           sudo chroot /tmp/openwrt-root /usr/bin/pslinkb --version && echo "APK OK (aarch64)"
-      - name: Verify IPK
+      - name: Verify IPK - inspect
         run: |
           set -e; arch=aarch64
           IPK=$(ls /tmp/pkgs/pslinkb-*-${arch}-openwrt.ipk 2>/dev/null | head -1)
           [ -z "$IPK" ] && echo "ERROR: no IPK found" && exit 1
+          echo "=== IPK: $IPK ==="
+          ls -la "$IPK"
+          file "$IPK"
+          echo "--- gunzip test ---"
+          gunzip -t "$IPK" && echo "gzip OK" || { echo "gzip BROKEN"; hexdump -C "$IPK" | head -4; exit 1; }
+      - name: Verify IPK - download rootfs
+        run: |
+          set -e
           curl -sL https://downloads.openwrt.org/releases/24.10.7/targets/armsr/armv8/openwrt-24.10.7-armsr-armv8-rootfs.tar.gz -o /tmp/rootfs.tar.gz
-          mkdir -p /tmp/openwrt-root && sudo tar xf /tmp/rootfs.tar.gz -C /tmp/openwrt-root --exclude='dev/*'
+          ls -la /tmp/rootfs.tar.gz
+      - name: Verify IPK - extract rootfs
+        run: |
+          set -e
+          mkdir -p /tmp/openwrt-root
+          sudo tar xzf /tmp/rootfs.tar.gz -C /tmp/openwrt-root --exclude='dev/*'
           sudo mkdir -p /tmp/openwrt-root/tmp /tmp/openwrt-root/dev /tmp/openwrt-root/var/lock
+          echo "=== rootfs size ==="
+          du -sh /tmp/openwrt-root
+      - name: Verify IPK - install
+        run: |
+          set -e; arch=aarch64
+          IPK=$(ls /tmp/pkgs/pslinkb-*-${arch}-openwrt.ipk 2>/dev/null | head -1)
+          [ -z "$IPK" ] && echo "ERROR: no IPK found" && exit 1
           sudo cp "$IPK" /tmp/openwrt-root/tmp/test.ipk
           sudo chroot /tmp/openwrt-root /bin/opkg install /tmp/test.ipk --force-overwrite
           sudo chroot /tmp/openwrt-root /usr/bin/pslinkb --version && echo "IPK OK (aarch64)"
-
   release:
     needs: [package-x86_64, package-aarch64, package-windows, package-macos-aarch64, package-macos-x86_64]
     runs-on: ubuntu-latest
