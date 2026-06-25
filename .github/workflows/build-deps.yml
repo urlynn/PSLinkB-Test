@@ -266,12 +266,13 @@ jobs:
             $(pkg-config --cflags --libs --static libavformat libavcodec libavutil) \
             -Wl,--gc-sections \
             -o /tmp/ffbuild/bin/pslinkb-stream.exe
+          cp /tmp/ffbuild/bin/pslinkb-stream.exe "$GITHUB_WORKSPACE/pslinkb-stream.exe"
       - name: Copy to workspace + verify
         shell: bash
         run: |
           set -e
-          SRC=$(find /d -name "pslinkb-stream.exe" -type f 2>/dev/null | head -1)
-          if [ -z "$SRC" ]; then echo "ERROR: stream not found"; exit 1; fi
+          SRC="$GITHUB_WORKSPACE/pslinkb-stream.exe"
+          [ -f "$SRC" ] || { echo "ERROR: stream not built (msys2 step produced no binary)"; exit 1; }
           mkdir -p /tmp/ffbuild/bin
           cp "$SRC" /tmp/ffbuild/bin/pslinkb-stream.exe
           /tmp/ffbuild/bin/pslinkb-stream.exe --version
