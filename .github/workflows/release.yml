@@ -105,6 +105,7 @@ jobs:
       - name: Verify arch
         run: |
           V="${V#v}"; set -e
+          mkdir -p /tmp/acheck
           tar --zstd -xf "/tmp/out/pslinkb-${V}-${ARCH}-archlinux.pkg.tar.zst" -C /tmp/acheck
           /tmp/acheck/usr/bin/pslinkb --version && echo "arch OK"
       - name: Verify portable
@@ -199,6 +200,7 @@ jobs:
       - name: Verify arch
         run: |
           V="${V#v}"; set -e
+          mkdir -p /tmp/acheck
           tar --zstd -xf "/tmp/out/pslinkb-${V}-${ARCH}-archlinux.pkg.tar.zst" -C /tmp/acheck
           /tmp/acheck/usr/bin/pslinkb --version && echo "arch OK"
       - name: Verify portable
